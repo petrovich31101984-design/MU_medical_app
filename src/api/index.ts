@@ -52,7 +52,28 @@ class ApiService {
       const response = await this.client.get(
         `${this.scriptUrl}?action=authenticateEmployee&personalNumber=${personalNumber}&password=${password}`
       );
-      return { success: true, data: response.data };
+      
+      const data = response.data;
+      
+      // Проверяем, что Apps Script не вернул ошибку
+      if (data && typeof data === 'object') {
+        // Если Apps Script вернул {success: false, error: "..."}
+        if (data.success === false) {
+          return { success: false, error: data.error || 'Неверный персональный номер или пароль' };
+        }
+        
+        // Если Apps Script вернул {error: "..."}
+        if (data.error && !data.id) {
+          return { success: false, error: data.error };
+        }
+        
+        // Проверяем наличие обязательных полей сотрудника
+        if (!data.id || !data.fullName || !data.personalNumber) {
+          return { success: false, error: 'Неверный персональный номер или пароль' };
+        }
+      }
+      
+      return { success: true, data };
     } catch (error) {
       return { success: false, error: 'Ошибка авторизации' };
     }
