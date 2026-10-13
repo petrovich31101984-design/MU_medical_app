@@ -27,29 +27,50 @@ export default function LoginScreen() {
     try {
       const response = await api.authenticateEmployee(personalNumber, password);
       
+      console.log('Login response:', response);
+      
+      // Если API вернул ошибку
       if (!response.success) {
         setError(response.error || 'Ошибка подключения к базе данных');
         setLoading(false);
         return;
       }
 
+      // Если нет данных или данные не содержат обязательных полей
       if (!response.data) {
         setError('Неверный персональный номер или пароль');
         setLoading(false);
         return;
       }
 
-      console.log('Login response data:', response.data);
-      console.log('Full name:', response.data.fullName);
-      console.log('All fields:', Object.keys(response.data));
+      // Проверяем, что данные содержат обязательные поля сотрудника
+      const data = response.data as any;
       
-      if (response.data.blocked) {
+      // Если Apps Script вернул ошибку внутри data
+      if (data.success === false || data.error) {
+        setError(data.error || 'Неверный персональный номер или пароль');
+        setLoading(false);
+        return;
+      }
+
+      // Проверяем наличие обязательных полей
+      if (!data.id || !data.fullName || !data.personalNumber) {
+        console.error('Invalid employee data:', data);
+        setError('Неверный персональный номер или пароль');
+        setLoading(false);
+        return;
+      }
+
+      console.log('Login response data:', data);
+      console.log('Full name:', data.fullName);
+      
+      if (data.blocked) {
         setError('Ваш аккаунт заблокирован');
         setLoading(false);
         return;
       }
 
-      if (response.data.status === 'Уволен') {
+      if (data.status === 'Уволен') {
         setError('Ваш аккаунт уволен');
         setLoading(false);
         return;
@@ -57,8 +78,8 @@ export default function LoginScreen() {
 
       // Убеждаемся, что передаем все данные
       const employeeData = {
-        ...response.data,
-        fullName: response.data.fullName || '',
+        ...data,
+        fullName: data.fullName || '',
       };
       
       console.log('Calling login with:', employeeData);

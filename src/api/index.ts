@@ -58,9 +58,20 @@ class ApiService {
       );
       console.log('API Response:', response.data);
       
-      // Проверяем, что ответ содержит данные сотрудника
+      // Проверяем, что ответ содержит данные
       if (!response.data || typeof response.data !== 'object') {
         return { success: false, error: 'Неверный формат ответа от базы данных' };
+      }
+      
+      // Если Apps Script вернул ошибку внутри данных
+      const data = response.data as any;
+      if (data.success === false) {
+        return { success: false, error: data.error || 'Неверный персональный номер или пароль' };
+      }
+      
+      // Проверяем наличие обязательных полей сотрудника
+      if (!data.id || !data.fullName || !data.personalNumber) {
+        return { success: false, error: 'Неверный персональный номер или пароль' };
       }
       
       return { success: true, data: response.data };
