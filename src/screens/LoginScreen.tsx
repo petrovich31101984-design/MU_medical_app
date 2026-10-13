@@ -46,7 +46,7 @@ export default function LoginScreen() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col justify-between p-5">
-      <div className="flex flex-col items-center mt-16">
+      <div className="flex flex-col items-center mt-8">
         <img
           src="https://raw.githubusercontent.com/petrovich31101984-design/MU_medical_app/creating-a-project-from-github-c0204/public/logo.png"
           alt="АлкоСпас"
