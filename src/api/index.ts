@@ -120,13 +120,13 @@ class ApiService {
     }
   }
 
-  // Создание листа расхода
+  // Создание листа расхода (используем GET с JSON параметром для обхода CORS)
   async createExpenseSheet(sheet: Omit<ExpenseSheet, 'id'>): Promise<ApiResponse<ExpenseSheet>> {
     try {
-      const response = await this.client.post(this.scriptUrl, {
-        action: 'addExpenseSheet',
-        data: sheet,
-      });
+      const sheetJson = encodeURIComponent(JSON.stringify(sheet));
+      const response = await this.client.get(
+        `${this.scriptUrl}?action=addExpenseSheet&data=${sheetJson}`
+      );
       return { success: true, data: response.data };
     } catch (error) {
       return { success: false, error: 'Ошибка создания листа расхода' };
@@ -157,13 +157,13 @@ class ApiService {
     }
   }
 
-  // Отправка сообщения
+  // Отправка сообщения (используем GET с JSON параметром для обхода CORS)
   async sendMessage(message: Omit<ChatMessage, 'id' | 'date'>): Promise<ApiResponse<ChatMessage>> {
     try {
-      const response = await this.client.post(this.scriptUrl, {
-        action: 'addChatMessage',
-        data: message,
-      });
+      const messageJson = encodeURIComponent(JSON.stringify(message));
+      const response = await this.client.get(
+        `${this.scriptUrl}?action=addChatMessage&data=${messageJson}`
+      );
       return { success: true, data: response.data };
     } catch (error) {
       return { success: false, error: 'Ошибка отправки сообщения' };
@@ -180,14 +180,13 @@ class ApiService {
     }
   }
 
-  // Открытие смены
+  // Открытие смены (используем GET для обхода CORS)
   async openShift(employeeId: string): Promise<ApiResponse<void>> {
     try {
       console.log('Opening shift for employee:', employeeId);
-      const response = await this.client.post(this.scriptUrl, {
-        action: 'updateEmployeeShift',
-        data: { id: employeeId, shiftOpen: true },
-      });
+      const response = await this.client.get(
+        `${this.scriptUrl}?action=updateEmployeeShift&id=${employeeId}&shiftOpen=true`
+      );
       console.log('Open shift response:', response.data);
       return { success: true };
     } catch (error) {
@@ -196,15 +195,17 @@ class ApiService {
     }
   }
 
-  // Закрытие смены
+  // Закрытие смены (используем GET для обхода CORS)
   async closeShift(employeeId: string): Promise<ApiResponse<void>> {
     try {
-      await this.client.post(this.scriptUrl, {
-        action: 'updateEmployeeShift',
-        data: { id: employeeId, shiftOpen: false },
-      });
+      console.log('Closing shift for employee:', employeeId);
+      const response = await this.client.get(
+        `${this.scriptUrl}?action=updateEmployeeShift&id=${employeeId}&shiftOpen=false`
+      );
+      console.log('Close shift response:', response.data);
       return { success: true };
     } catch (error) {
+      console.error('Close shift error:', error);
       return { success: false, error: 'Ошибка закрытия смены' };
     }
   }
