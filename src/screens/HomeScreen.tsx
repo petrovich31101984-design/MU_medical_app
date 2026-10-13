@@ -74,7 +74,8 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
 
       {/* Announcements from Manager */}
       <div className="m-5 announcement-border">
-        <div className="bg-yellow-50 p-4 rounded-[10px]">
+        {/* Контент */}
+        <div className="relative bg-yellow-50 p-4 rounded-[10px] animate-pulse-shadow">
           <div className="flex items-center mb-2">
             <span className="text-xl mr-2">📢</span>
             <h3 className="text-base font-bold text-slate-800">Объявления</h3>
