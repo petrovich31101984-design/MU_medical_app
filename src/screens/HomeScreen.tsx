@@ -74,56 +74,56 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
 
       {/* Announcements from Manager */}
       <div 
-        className="bg-yellow-50 p-4 m-5 rounded-lg"
+        className="m-5 rounded-xl p-[2px]"
         style={{
-          borderImage: 'linear-gradient(to right, #2563eb 50%, #dc2626 50%) 1',
-          borderWidth: '2px',
-          borderStyle: 'solid'
+          background: 'linear-gradient(to right, #2563eb 50%, #dc2626 50%)'
         }}
       >
-        <div className="flex items-center mb-2">
-          <span className="text-xl mr-2">📢</span>
-          <h3 className="text-base font-bold text-slate-800">Объявления</h3>
-        </div>
-        {announcements.filter(a => a.active).length > 0 ? (
-          <>
-            <div className="space-y-3">
-              {announcements
-                .filter(a => a.active)
-                .slice(0, 3)
-                .map((announcement) => (
-                  <div key={announcement.id} className="bg-white p-3 rounded-lg border border-yellow-200">
-                    <div className="flex justify-between items-start mb-1">
-                      <h4 className="text-sm font-bold text-slate-800 flex-1">
-                        {announcement.title}
-                      </h4>
-                      <span className="text-xs text-slate-400 ml-2 whitespace-nowrap">
-                        {new Date(announcement.date).toLocaleDateString('ru-RU')}
-                      </span>
-                    </div>
-                    <p className="text-sm text-slate-600 leading-relaxed">
-                      {announcement.text}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-2">
-                      От: {announcement.createdBy}
-                    </p>
-                  </div>
-                ))}
-            </div>
-            {announcements.filter(a => a.active).length > 3 && (
-              <button
-                className="w-full mt-3 py-2 text-sm text-yellow-700 font-medium hover:bg-yellow-100 rounded-lg transition-colors"
-                onClick={() => onNavigate('Announcements')}
-              >
-                Показать все объявления →
-              </button>
-            )}
-          </>
-        ) : (
-          <div className="text-center py-4">
-            <p className="text-sm text-slate-500">Нет новых объявлений</p>
+        <div className="bg-yellow-50 p-4 rounded-[10px]">
+          <div className="flex items-center mb-2">
+            <span className="text-xl mr-2">📢</span>
+            <h3 className="text-base font-bold text-slate-800">Объявления</h3>
           </div>
-        )}
+          {announcements.filter(a => a.active).length > 0 ? (
+            <>
+              <div className="space-y-3">
+                {announcements
+                  .filter(a => a.active)
+                  .slice(0, 3)
+                  .map((announcement) => (
+                    <div key={announcement.id} className="bg-white p-3 rounded-lg border border-yellow-200">
+                      <div className="flex justify-between items-start mb-1">
+                        <h4 className="text-sm font-bold text-slate-800 flex-1">
+                          {announcement.title}
+                        </h4>
+                        <span className="text-xs text-slate-400 ml-2 whitespace-nowrap">
+                          {new Date(announcement.date).toLocaleDateString('ru-RU')}
+                        </span>
+                      </div>
+                      <p className="text-sm text-slate-600 leading-relaxed">
+                        {announcement.text}
+                      </p>
+                      <p className="text-xs text-slate-400 mt-2">
+                        От: {announcement.createdBy}
+                      </p>
+                    </div>
+                  ))}
+              </div>
+              {announcements.filter(a => a.active).length > 3 && (
+                <button
+                  className="w-full mt-3 py-2 text-sm text-yellow-700 font-medium hover:bg-yellow-100 rounded-lg transition-colors"
+                  onClick={() => onNavigate('Announcements')}
+                >
+                  Показать все объявления →
+                </button>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-sm text-slate-500">Нет новых объявлений</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Menu */}
