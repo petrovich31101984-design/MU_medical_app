@@ -21,9 +21,6 @@ export default function LoginScreen() {
       const response = await api.authenticateEmployee(personalNumber, password);
       
       if (response.success && response.data) {
-        console.log('API response data:', response.data);
-        console.log('Full name from API:', response.data.fullName);
-        
         if (response.data.blocked) {
           setError('Ваш аккаунт заблокирован');
           setLoading(false);
