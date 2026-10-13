@@ -69,8 +69,8 @@ class ApiService {
         return { success: false, error: data.error || 'Неверный персональный номер или пароль' };
       }
       
-      // Проверяем наличие обязательных полей сотрудника
-      if (!data.id || !data.fullName || !data.personalNumber) {
+      // Проверяем наличие хотя бы id (минимальное требование)
+      if (!data.id) {
         return { success: false, error: 'Неверный персональный номер или пароль' };
       }
       

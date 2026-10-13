@@ -53,16 +53,25 @@ export default function LoginScreen() {
         return;
       }
 
-      // Проверяем наличие обязательных полей
-      if (!data.id || !data.fullName || !data.personalNumber) {
-        console.error('Invalid employee data:', data);
+      console.log('=== LOGIN DEBUG ===');
+      console.log('Response:', response);
+      console.log('Success:', response.success);
+      console.log('Data:', response.data);
+      console.log('Data type:', typeof response.data);
+      if (response.data) {
+        console.log('Data keys:', Object.keys(response.data));
+        console.log('Data values:', response.data);
+      }
+
+      // Проверяем наличие хотя бы id (минимальное требование)
+      if (!data.id) {
+        console.error('No id in employee data:', data);
         setError('Неверный персональный номер или пароль');
         setLoading(false);
         return;
       }
 
-      console.log('Login response data:', data);
-      console.log('Full name:', data.fullName);
+      console.log('Login successful, employee data:', data);
       
       if (data.blocked) {
         setError('Ваш аккаунт заблокирован');
@@ -76,10 +85,11 @@ export default function LoginScreen() {
         return;
       }
 
-      // Убеждаемся, что передаем все данные
+      // Убеждаемся, что передаем все данные с поддержкой альтернативных имен полей
       const employeeData = {
         ...data,
-        fullName: data.fullName || '',
+        fullName: data.fullName || data.full_name || data.name || '',
+        personalNumber: data.personalNumber || data.personal_number || personalNumber,
       };
       
       console.log('Calling login with:', employeeData);
