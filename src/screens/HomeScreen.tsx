@@ -157,6 +157,19 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
 
         <button
           className="bg-white w-full p-4 rounded-xl border border-slate-200 flex items-center hover:bg-slate-50 transition-colors"
+          onClick={() => onNavigate('Return')}
+        >
+          <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mr-4 text-2xl">
+            ↩️
+          </div>
+          <div className="text-left flex-1">
+            <p className="text-base font-bold text-slate-800">Оформить возврат</p>
+            <p className="text-sm text-slate-500 mt-1">Возврат препаратов</p>
+          </div>
+        </button>
+
+        <button
+          className="bg-white w-full p-4 rounded-xl border border-slate-200 flex items-center hover:bg-slate-50 transition-colors"
           onClick={() => onNavigate('Profile')}
         >
           <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mr-4 text-2xl">
