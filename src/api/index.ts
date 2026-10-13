@@ -52,8 +52,10 @@ class ApiService {
       const response = await this.client.get(
         `${this.scriptUrl}?action=authenticateEmployee&personalNumber=${personalNumber}&password=${password}`
       );
+      console.log('API Response:', response.data);
       return { success: true, data: response.data };
     } catch (error) {
+      console.error('API Error:', error);
       return { success: false, error: 'Ошибка авторизации' };
     }
   }

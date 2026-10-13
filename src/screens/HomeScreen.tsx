@@ -16,6 +16,8 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
   // Обновляем shiftStatus когда employee загружается
   useEffect(() => {
     if (employee) {
+      console.log('HomeScreen employee:', employee);
+      console.log('Full name:', employee.fullName);
       setShiftStatus(employee.shiftOpen || false);
       loadAnnouncements();
     }
