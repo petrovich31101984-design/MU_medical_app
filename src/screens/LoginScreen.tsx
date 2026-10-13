@@ -52,7 +52,10 @@ export default function LoginScreen() {
           alt="АлкоСпас"
           className="w-32 h-32 mb-5 drop-shadow-lg rounded-2xl"
         />
-        <h1 className="text-3xl font-bold text-red-600 mb-2">АлкоСпас</h1>
+        <h1 className="text-3xl font-bold mb-2">
+          <span className="text-blue-700">Алко</span>
+          <span className="text-red-600">Спас</span>
+        </h1>
         <p className="text-base text-slate-500">Система медицинского учета</p>
       </div>
 

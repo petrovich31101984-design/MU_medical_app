@@ -43,8 +43,9 @@ export default function SetupScreen({ onConnected }: SetupScreenProps) {
             alt="АлкоСпас"
             className="w-24 h-24 mb-4 drop-shadow-lg rounded-2xl"
           />
-          <h1 className="text-2xl font-bold text-red-600 mb-2">
-            АлкоСпас
+          <h1 className="text-2xl font-bold mb-2">
+            <span className="text-blue-700">Алко</span>
+            <span className="text-red-600">Спас</span>
           </h1>
           <p className="text-base text-slate-500 text-center">
             Система медицинского учета
