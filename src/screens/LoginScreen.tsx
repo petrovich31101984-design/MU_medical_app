@@ -75,7 +75,7 @@ export default function LoginScreen() {
           <label className="text-sm text-slate-500 mb-2 block">Персональный номер</label>
           <input
             type="text"
-            className="w-full border border-slate-200 rounded-lg p-4 text-base bg-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+            className="w-full border border-slate-200 rounded-lg p-4 text-base bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             value={personalNumber}
             onChange={(e) => setPersonalNumber(e.target.value)}
             placeholder="Введите номер"
@@ -86,7 +86,7 @@ export default function LoginScreen() {
           <label className="text-sm text-slate-500 mb-2 block">Пароль</label>
           <input
             type="password"
-            className="w-full border border-slate-200 rounded-lg p-4 text-base bg-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+            className="w-full border border-slate-200 rounded-lg p-4 text-base bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Введите пароль"
@@ -101,7 +101,7 @@ export default function LoginScreen() {
         )}
 
         <button
-          className="bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-lg w-full transition-colors disabled:opacity-50 mt-2"
+          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-lg w-full transition-colors disabled:opacity-50 mt-2"
           onClick={handleLogin}
           disabled={loading}
         >
