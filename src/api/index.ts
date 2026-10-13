@@ -184,8 +184,9 @@ class ApiService {
   async openShift(employeeId: string): Promise<ApiResponse<void>> {
     try {
       console.log('Opening shift for employee:', employeeId);
+      // Пробуем разные варианты action
       const response = await this.client.get(
-        `${this.scriptUrl}?action=updateEmployeeShift&id=${employeeId}&shiftOpen=true`
+        `${this.scriptUrl}?action=openShift&employeeId=${employeeId}`
       );
       console.log('Open shift response:', response.data);
       return { success: true };
@@ -200,7 +201,7 @@ class ApiService {
     try {
       console.log('Closing shift for employee:', employeeId);
       const response = await this.client.get(
-        `${this.scriptUrl}?action=updateEmployeeShift&id=${employeeId}&shiftOpen=false`
+        `${this.scriptUrl}?action=closeShift&employeeId=${employeeId}`
       );
       console.log('Close shift response:', response.data);
       return { success: true };
