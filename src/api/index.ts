@@ -183,12 +183,15 @@ class ApiService {
   // Открытие смены
   async openShift(employeeId: string): Promise<ApiResponse<void>> {
     try {
-      await this.client.post(this.scriptUrl, {
+      console.log('Opening shift for employee:', employeeId);
+      const response = await this.client.post(this.scriptUrl, {
         action: 'updateEmployeeShift',
         data: { id: employeeId, shiftOpen: true },
       });
+      console.log('Open shift response:', response.data);
       return { success: true };
     } catch (error) {
+      console.error('Open shift error:', error);
       return { success: false, error: 'Ошибка открытия смены' };
     }
   }

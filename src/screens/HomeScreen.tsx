@@ -25,28 +25,39 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
   }, [employee]);
 
   const handleToggleShift = async () => {
-    if (!employee) return;
+    if (!employee) {
+      console.error('No employee data');
+      return;
+    }
+
+    console.log('Toggle shift - current status:', shiftStatus);
+    console.log('Employee ID:', employee.id);
 
     try {
       if (shiftStatus) {
+        console.log('Closing shift...');
         const result = await api.closeShift(employee.id);
+        console.log('Close shift result:', result);
         if (result.success) {
           setShiftStatus(false);
           setShiftMessage('Смена закрыта');
         } else {
-          setShiftMessage('Не удалось закрыть смену');
+          setShiftMessage(result.error || 'Не удалось закрыть смену');
         }
       } else {
+        console.log('Opening shift...');
         const result = await api.openShift(employee.id);
+        console.log('Open shift result:', result);
         if (result.success) {
           setShiftStatus(true);
           setShiftMessage('Смена открыта');
         } else {
-          setShiftMessage('Не удалось открыть смену');
+          setShiftMessage(result.error || 'Не удалось открыть смену');
         }
       }
       setTimeout(() => setShiftMessage(''), 3000);
     } catch (error) {
+      console.error('Toggle shift error:', error);
       setShiftMessage('Не удалось изменить статус смены');
       setTimeout(() => setShiftMessage(''), 3000);
     }
