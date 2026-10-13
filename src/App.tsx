@@ -67,13 +67,13 @@ export default function App() {
               className="w-24 h-24 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-2xl animate-pulse"
             />
             
-            {/* Синяя дуга - верхняя правая четверть */}
+            {/* Синяя дуга - внешняя */}
             <div className="absolute inset-0 animate-spin" style={{ animationDuration: '2s' }}>
               <div className="w-full h-full rounded-full border-4 border-transparent border-t-blue-600 border-r-blue-600"></div>
             </div>
             
-            {/* Красная дуга - нижняя левая четверть (разрыв 1/4 дуги) */}
-            <div className="absolute inset-0 animate-spin" style={{ animationDuration: '2s' }}>
+            {/* Красная дуга - внутренняя (с отступом для расстояния) */}
+            <div className="absolute inset-3 animate-spin" style={{ animationDuration: '2s' }}>
               <div className="w-full h-full rounded-full border-4 border-transparent border-b-red-600 border-l-red-600"></div>
             </div>
           </div>
