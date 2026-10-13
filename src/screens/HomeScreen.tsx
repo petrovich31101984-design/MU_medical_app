@@ -157,28 +157,6 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
 
         <button
           className="bg-white w-full p-4 rounded-xl border border-slate-200 flex items-center hover:bg-slate-50 transition-colors"
-          onClick={() => onNavigate('Announcements')}
-        >
-          <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mr-4 text-2xl">
-            📢
-          </div>
-          <div className="text-left flex-1">
-            <p className="text-base font-bold text-slate-800">Объявления</p>
-            <p className="text-sm text-slate-500 mt-1">
-              {activeAnnouncements > 0
-                ? `${activeAnnouncements} активных`
-                : 'Нет объявлений'}
-            </p>
-          </div>
-          {activeAnnouncements > 0 && (
-            <div className="bg-red-600 rounded-full px-2 py-1 min-w-[24px] flex items-center justify-center">
-              <span className="text-white text-xs font-bold">{activeAnnouncements}</span>
-            </div>
-          )}
-        </button>
-
-        <button
-          className="bg-white w-full p-4 rounded-xl border border-slate-200 flex items-center hover:bg-slate-50 transition-colors"
           onClick={() => onNavigate('Profile')}
         >
           <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mr-4 text-2xl">
