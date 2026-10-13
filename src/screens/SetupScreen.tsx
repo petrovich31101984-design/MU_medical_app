@@ -96,7 +96,7 @@ export default function SetupScreen({ onConnected }: SetupScreenProps) {
       </div>
 
       <p className="text-center text-slate-400 text-xs">
-        © {new Date().getFullYear()} АлкоСпас • Выездная медицинская помощь
+        © {new Date().getFullYear()} АлкоСпас • Выездная медицинская помощь <span className="text-green-600">(v. 0.1)</span>
       </p>
     </div>
   );
