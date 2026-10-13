@@ -15,41 +15,57 @@ export default function LoginScreen() {
       return;
     }
 
+    // Проверяем, что база данных подключена
+    const configUrl = api.getConfigUrl();
+    if (!configUrl) {
+      setError('База данных не подключена. Обратитесь к администратору.');
+      return;
+    }
+
     setLoading(true);
     setError('');
     try {
       const response = await api.authenticateEmployee(personalNumber, password);
       
-      if (response.success && response.data) {
-        console.log('Login response data:', response.data);
-        console.log('Full name:', response.data.fullName);
-        console.log('All fields:', Object.keys(response.data));
-        
-        if (response.data.blocked) {
-          setError('Ваш аккаунт заблокирован');
-          setLoading(false);
-          return;
-        }
-
-        if (response.data.status === 'Уволен') {
-          setError('Ваш аккаунт уволен');
-          setLoading(false);
-          return;
-        }
-
-        // Убеждаемся, что передаем все данные
-        const employeeData = {
-          ...response.data,
-          fullName: response.data.fullName || '',
-        };
-        
-        console.log('Calling login with:', employeeData);
-        await login(employeeData);
-      } else {
-        setError(response.error || 'Неверный персональный номер или пароль');
+      if (!response.success) {
+        setError(response.error || 'Ошибка подключения к базе данных');
+        setLoading(false);
+        return;
       }
+
+      if (!response.data) {
+        setError('Неверный персональный номер или пароль');
+        setLoading(false);
+        return;
+      }
+
+      console.log('Login response data:', response.data);
+      console.log('Full name:', response.data.fullName);
+      console.log('All fields:', Object.keys(response.data));
+      
+      if (response.data.blocked) {
+        setError('Ваш аккаунт заблокирован');
+        setLoading(false);
+        return;
+      }
+
+      if (response.data.status === 'Уволен') {
+        setError('Ваш аккаунт уволен');
+        setLoading(false);
+        return;
+      }
+
+      // Убеждаемся, что передаем все данные
+      const employeeData = {
+        ...response.data,
+        fullName: response.data.fullName || '',
+      };
+      
+      console.log('Calling login with:', employeeData);
+      await login(employeeData);
     } catch (err) {
-      setError('Ошибка подключения к серверу');
+      console.error('Login error:', err);
+      setError('Ошибка подключения к базе данных. Проверьте соединение и попробуйте снова.');
     } finally {
       setLoading(false);
     }

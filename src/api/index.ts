@@ -48,15 +48,36 @@ class ApiService {
 
   // Авторизация сотрудника
   async authenticateEmployee(personalNumber: string, password: string): Promise<ApiResponse<Employee>> {
+    if (!this.scriptUrl) {
+      return { success: false, error: 'База данных не подключена' };
+    }
+
     try {
       const response = await this.client.get(
         `${this.scriptUrl}?action=authenticateEmployee&personalNumber=${personalNumber}&password=${password}`
       );
       console.log('API Response:', response.data);
+      
+      // Проверяем, что ответ содержит данные сотрудника
+      if (!response.data || typeof response.data !== 'object') {
+        return { success: false, error: 'Неверный формат ответа от базы данных' };
+      }
+      
       return { success: true, data: response.data };
     } catch (error) {
       console.error('API Error:', error);
-      return { success: false, error: 'Ошибка авторизации' };
+      
+      // Определяем тип ошибки
+      if (error instanceof Error) {
+        if (error.message.includes('Network Error')) {
+          return { success: false, error: 'Нет соединения с базой данных' };
+        }
+        if (error.message.includes('timeout')) {
+          return { success: false, error: 'Превышено время ожидания ответа от базы данных' };
+        }
+      }
+      
+      return { success: false, error: 'Ошибка подключения к базе данных' };
     }
   }
 

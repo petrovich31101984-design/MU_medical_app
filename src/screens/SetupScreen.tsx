@@ -25,10 +25,14 @@ export default function SetupScreen({ onConnected }: SetupScreenProps) {
       if (testResult.success) {
         onConnected();
       } else {
-        setError(testResult.error || 'Не удалось подключиться');
+        // Если подключение не удалось, очищаем сохранённый URL
+        localStorage.removeItem('appsScriptConfig');
+        setError(testResult.error || 'Не удалось подключиться к базе данных. Проверьте URL и попробуйте снова.');
       }
     } catch (err) {
-      setError('Ошибка подключения к серверу');
+      // Если произошла ошибка, очищаем сохранённый URL
+      localStorage.removeItem('appsScriptConfig');
+      setError('Ошибка подключения к базе данных. Проверьте URL и соединение с интернетом.');
     } finally {
       setTesting(false);
     }
