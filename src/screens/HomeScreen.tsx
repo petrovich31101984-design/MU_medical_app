@@ -175,7 +175,13 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-slate-500">Статус смены</p>
             {shiftMessage && (
-              <p className="text-sm text-blue-600 font-medium">{shiftMessage}</p>
+              <p className={`text-sm font-medium ${
+                shiftMessage.includes('Не удалось') || shiftMessage.includes('ошибка') 
+                  ? 'text-red-600' 
+                  : 'text-blue-600'
+              }`}>
+                {shiftMessage}
+              </p>
             )}
           </div>
           <p className={`text-lg font-bold ${shiftStatus ? 'text-green-600' : 'text-slate-500'}`}>
