@@ -10,7 +10,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
 
   if (!employee) return null;
 
-  const initials = employee.fullName
+  const initials = (employee.fullName || '')
     .split(' ')
     .slice(0, 2)
     .map(n => n[0])
