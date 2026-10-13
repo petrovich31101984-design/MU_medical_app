@@ -69,7 +69,7 @@ export default function App() {
             
             {/* SVG с двумя дугами */}
             <svg className="absolute inset-0 w-full h-full animate-spin" style={{ animationDuration: '2s' }} viewBox="0 0 128 128">
-              {/* Синяя дуга - верхняя правая (60°) */}
+              {/* Синяя дуга - 150° */}
               <circle
                 cx="64"
                 cy="64"
@@ -77,11 +77,11 @@ export default function App() {
                 fill="none"
                 stroke="#2563eb"
                 strokeWidth="4"
-                strokeDasharray="58.6 293"
+                strokeDasharray="146.6 205.3"
                 strokeDashoffset="0"
                 strokeLinecap="round"
               />
-              {/* Красная дуга - нижняя левая (60°) */}
+              {/* Красная дуга - 150° (разрыв 30°) */}
               <circle
                 cx="64"
                 cy="64"
@@ -89,8 +89,8 @@ export default function App() {
                 fill="none"
                 stroke="#dc2626"
                 strokeWidth="4"
-                strokeDasharray="58.6 293"
-                strokeDashoffset="-176"
+                strokeDasharray="146.6 205.3"
+                strokeDashoffset="-175.9"
                 strokeLinecap="round"
               />
             </svg>
