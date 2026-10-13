@@ -172,16 +172,16 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
       {/* Shift Card */}
       <div className="bg-white m-5 p-5 rounded-xl border border-slate-200">
         <div className="mb-4">
-          <p className="text-sm text-slate-500 mb-2">Статус смены</p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm text-slate-500">Статус смены</p>
+            {shiftMessage && (
+              <p className="text-sm text-blue-600 font-medium">{shiftMessage}</p>
+            )}
+          </div>
           <p className={`text-lg font-bold ${shiftStatus ? 'text-green-600' : 'text-slate-500'}`}>
             {shiftStatus ? '🟢 Смена открыта' : '⚪ Смена закрыта'}
           </p>
         </div>
-        {shiftMessage && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 mb-3">
-            <p className="text-sm text-blue-600">{shiftMessage}</p>
-          </div>
-        )}
         <button
           className={`w-full py-4 rounded-lg font-bold text-white transition-colors ${
             shiftStatus
