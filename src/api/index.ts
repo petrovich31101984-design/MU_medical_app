@@ -53,39 +53,53 @@ class ApiService {
     }
 
     try {
+      console.log('=== AUTHENTICATE REQUEST ===');
+      console.log('Personal Number:', personalNumber);
+      console.log('Password:', password);
+      
       const response = await this.client.get(
         `${this.scriptUrl}?action=authenticateEmployee&personalNumber=${personalNumber}&password=${password}`
       );
-      console.log('API Response:', response.data);
+      
+      console.log('=== AUTHENTICATE RESPONSE ===');
+      console.log('Status:', response.status);
+      console.log('Status Text:', response.statusText);
+      console.log('Data:', response.data);
+      console.log('Data Type:', typeof response.data);
+      console.log('Data Keys:', Object.keys(response.data || {}));
       
       // Проверяем, что ответ содержит данные
       if (!response.data || typeof response.data !== 'object') {
-        return { success: false, error: 'Неверный формат ответа от базы данных' };
+        console.log('Invalid data format');
+        return { success: false, error: 'Неверный персональный номер или пароль' };
       }
       
       // Если Apps Script вернул ошибку внутри данных
       const data = response.data as any;
       
-      console.log('Apps Script response:', data);
-      
       // Проверяем наличие поля error в ответе
       if (data.error) {
+        console.log('Error from Apps Script:', data.error);
         return { success: false, error: data.error };
       }
       
       // Если Apps Script вернул success: false
       if (data.success === false) {
+        console.log('Success is false');
         return { success: false, error: data.error || 'Неверный персональный номер или пароль' };
       }
       
       // Проверяем наличие хотя бы id (минимальное требование)
       if (!data.id) {
+        console.log('No id in response');
         return { success: false, error: 'Неверный персональный номер или пароль' };
       }
       
-      return { success: true, data: response.data };
+      console.log('Authentication successful, employee:', data);
+      return { success: true, data };
     } catch (error) {
-      console.error('API Error:', error);
+      console.error('=== AUTHENTICATE ERROR ===');
+      console.error('Error:', error);
       
       // Определяем тип ошибки
       if (error instanceof Error) {

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { api } from '../api';
-import { hashPassword } from '../utils/hash';
 
 export default function LoginScreen() {
   const [personalNumber, setPersonalNumber] = useState('');
@@ -26,47 +25,59 @@ export default function LoginScreen() {
     setLoading(true);
     setError('');
     try {
-      // Хэшируем пароль перед отправкой в API
-      const passwordHash = await hashPassword(password);
-      console.log('Password hash:', passwordHash);
+      // Отправляем обычный пароль - Apps Script сам его захэширует и сравнит с хэшем в БД
+      const response = await api.authenticateEmployee(personalNumber, password);
       
-      const response = await api.authenticateEmployee(personalNumber, passwordHash);
-      
-      console.log('Login response:', response);
+      console.log('=== LOGIN RESPONSE ===');
+      console.log('Full response:', response);
+      console.log('Success:', response.success);
+      console.log('Error:', response.error);
+      console.log('Data:', response.data);
       
       // Если API вернул ошибку
       if (!response.success) {
+        console.log('API returned error:', response.error);
         setError(response.error || 'Ошибка подключения к базе данных');
         setLoading(false);
         return;
       }
 
-      // Если нет данных или данные не содержат обязательных полей
+      // Если нет данных
       if (!response.data) {
+        console.log('No data in response');
         setError('Неверный персональный номер или пароль');
         setLoading(false);
         return;
       }
 
       // Проверяем, что данные содержат обязательные поля сотрудника
-      const data = response.data as any;
+      let data = response.data as any;
+      
+      console.log('Data type:', typeof data);
+      console.log('Is array:', Array.isArray(data));
+      console.log('Data keys:', Object.keys(data));
+      
+      // Если Apps Script вернул массив, берём первый элемент
+      if (Array.isArray(data)) {
+        console.log('Data is array, taking first element');
+        data = data[0];
+      }
+      
+      // Если Apps Script вернул объект с полем data внутри
+      if (data.data && typeof data.data === 'object') {
+        console.log('Data has nested data field');
+        data = data.data;
+      }
       
       // Если Apps Script вернул ошибку внутри data
       if (data.success === false || data.error) {
+        console.log('Apps Script returned error:', data.error);
         setError(data.error || 'Неверный персональный номер или пароль');
         setLoading(false);
         return;
       }
 
-      console.log('=== LOGIN DEBUG ===');
-      console.log('Response:', response);
-      console.log('Success:', response.success);
-      console.log('Data:', response.data);
-      console.log('Data type:', typeof response.data);
-      if (response.data) {
-        console.log('Data keys:', Object.keys(response.data));
-        console.log('Data values:', response.data);
-      }
+      console.log('Final employee data:', data);
 
       // Проверяем наличие хотя бы id (минимальное требование)
       if (!data.id) {
