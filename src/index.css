@@ -1,46 +1,8 @@
 @import "tailwindcss";
 
-@keyframes pulse-shadow {
-  0%, 100% {
-    box-shadow: 0 0 10px rgba(37, 99, 235, 0.5), 0 0 20px rgba(220, 38, 38, 0.5);
-  }
-  50% {
-    box-shadow: 0 0 5px rgba(37, 99, 235, 0.2), 0 0 10px rgba(220, 38, 38, 0.2);
-  }
-}
-
-.animate-pulse-shadow {
-  animation: pulse-shadow 2s ease-in-out infinite;
-}
-
 .announcement-border {
   position: relative;
   border-radius: 12px;
   padding: 3px;
   background: linear-gradient(90deg, #2563eb 50%, #dc2626 50%);
-}
-
-.announcement-border::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 12px;
-  padding: 3px;
-  background: conic-gradient(from 0deg, #2563eb 0deg 180deg, #dc2626 180deg 360deg);
-  -webkit-mask: 
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  animation: rotate-border 3s linear infinite;
-  z-index: 0;
-}
-
-@keyframes rotate-border {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
 }
