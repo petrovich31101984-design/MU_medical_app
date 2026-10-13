@@ -74,7 +74,14 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
 
       {/* Announcements from Manager */}
       {announcements.filter(a => a.active).length > 0 && (
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 m-5 rounded-r-lg">
+        <div 
+          className="bg-yellow-50 p-4 m-5 rounded-lg"
+          style={{
+            borderImage: 'linear-gradient(to right, #2563eb, #dc2626) 1',
+            borderWidth: '3px',
+            borderStyle: 'solid'
+          }}
+        >
           <div className="flex items-center mb-2">
             <span className="text-xl mr-2">📢</span>
             <h3 className="text-base font-bold text-slate-800">Объявления</h3>
