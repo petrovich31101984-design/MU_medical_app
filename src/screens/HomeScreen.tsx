@@ -112,7 +112,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
             </>
           ) : (
             <div className="text-center py-4">
-              <p className="text-sm text-slate-500">Нет новых объявлений</p>
+              <p className="text-sm text-slate-500">📢 Нет новых объявлений</p>
             </div>
           )}
         </div>
