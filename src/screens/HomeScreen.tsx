@@ -180,6 +180,19 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
             <p className="text-sm text-slate-500 mt-1">Личная информация</p>
           </div>
         </button>
+
+        <button
+          className="bg-white w-full p-4 rounded-xl border border-slate-200 flex items-center hover:bg-slate-50 transition-colors"
+          onClick={() => onNavigate('Settings')}
+        >
+          <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mr-4 text-2xl">
+            ⚙️
+          </div>
+          <div className="text-left flex-1">
+            <p className="text-base font-bold text-slate-800">Настройки и информация</p>
+            <p className="text-sm text-slate-500 mt-1">Параметры приложения</p>
+          </div>
+        </button>
       </div>
 
       {/* Shift Card */}

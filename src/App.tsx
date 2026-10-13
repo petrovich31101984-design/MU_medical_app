@@ -11,8 +11,9 @@ import AnnouncementsScreen from './screens/AnnouncementsScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import SetupScreen from './screens/SetupScreen';
 import ReturnScreen from './screens/ReturnScreen';
+import SettingsScreen from './screens/SettingsScreen';
 
-type Screen = 'Setup' | 'Login' | 'Home' | 'ExpenseSheet' | 'Messages' | 'Announcements' | 'Profile' | 'Return';
+type Screen = 'Setup' | 'Login' | 'Home' | 'ExpenseSheet' | 'Messages' | 'Announcements' | 'Profile' | 'Return' | 'Settings';
 
 export default function App() {
   const { isAuthenticated, loadSession } = useAuthStore();
@@ -124,6 +125,8 @@ export default function App() {
         return <ProfileScreen onBack={handleBack} />;
       case 'Return':
         return <ReturnScreen onBack={handleBack} />;
+      case 'Settings':
+        return <SettingsScreen onBack={handleBack} />;
       default:
         return <HomeScreen onNavigate={handleNavigate} />;
     }
