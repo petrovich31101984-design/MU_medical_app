@@ -37,9 +37,23 @@ export default function SetupScreen({ onConnected }: SetupScreenProps) {
   return (
     <div className="min-h-screen bg-white flex flex-col justify-between p-5">
       <div className="flex-1 flex flex-col justify-center max-w-md mx-auto w-full">
-        <h1 className="text-2xl font-bold text-slate-800 text-center mb-2">
+        <div className="flex flex-col items-center mb-8">
+          <img
+            src="/logo.svg"
+            alt="АлкоСпас"
+            className="w-24 h-24 mb-4 drop-shadow-lg"
+          />
+          <h1 className="text-2xl font-bold text-red-600 mb-2">
+            АлкоСпас
+          </h1>
+          <p className="text-base text-slate-500 text-center">
+            Система медицинского учета
+          </p>
+        </div>
+
+        <h2 className="text-xl font-bold text-slate-800 text-center mb-2">
           Настройка подключения
-        </h1>
+        </h2>
         <p className="text-base text-slate-500 text-center mb-8">
           Введите URL веб-приложения Google Apps Script
         </p>

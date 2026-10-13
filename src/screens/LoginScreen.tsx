@@ -47,9 +47,11 @@ export default function LoginScreen() {
   return (
     <div className="min-h-screen bg-white flex flex-col justify-between p-5">
       <div className="flex flex-col items-center mt-16">
-        <div className="w-28 h-28 bg-gradient-to-br from-red-500 to-red-700 rounded-full flex items-center justify-center mb-5 shadow-lg">
-          <span className="text-white text-4xl font-bold">А</span>
-        </div>
+        <img
+          src="/logo.svg"
+          alt="АлкоСпас"
+          className="w-32 h-32 mb-5 drop-shadow-lg"
+        />
         <h1 className="text-3xl font-bold text-red-600 mb-2">АлкоСпас</h1>
         <p className="text-base text-slate-500">Система медицинского учета</p>
       </div>
