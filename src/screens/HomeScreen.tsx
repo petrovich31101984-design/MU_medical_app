@@ -73,12 +73,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
       </div>
 
       {/* Announcements from Manager */}
-      <div 
-        className="m-5 rounded-xl p-[2px] animate-rotate-border animate-pulse-opacity"
-        style={{
-          background: 'conic-gradient(from 0deg, #2563eb 0% 50%, #dc2626 50% 100%)'
-        }}
-      >
+      <div className="m-5 announcement-border">
         <div className="bg-yellow-50 p-4 rounded-[10px]">
           <div className="flex items-center mb-2">
             <span className="text-xl mr-2">📢</span>
