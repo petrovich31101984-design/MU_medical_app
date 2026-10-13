@@ -61,13 +61,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
       <div className="bg-white p-5 flex justify-between items-center border-b border-slate-200">
         <div>
           <p className="text-sm text-slate-500">
-            Здравствуйте, {employee?.fullName || 'Сотрудник'}
-          </p>
-          <p className="text-xl font-bold text-slate-800 mt-1">
-            {employee?.fullName || 'Не указано'}
-          </p>
-          <p className="text-sm text-slate-500 mt-1">
-            {employee?.position || 'Не указана должность'}
+            Здравствуйте
           </p>
         </div>
         <button
