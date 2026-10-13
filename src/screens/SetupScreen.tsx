@@ -59,17 +59,6 @@ export default function SetupScreen({ onConnected }: SetupScreenProps) {
           Введите URL веб-приложения Google Apps Script
         </p>
 
-        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6">
-          <p className="text-base font-bold text-slate-800 mb-2">Инструкция:</p>
-          <p className="text-sm text-slate-600 leading-relaxed">
-            1. Откройте Google Sheets с базой данных<br />
-            2. Расширения → Apps Script<br />
-            3. Развернуть → Новое развертывание<br />
-            4. Тип: Веб-приложение<br />
-            5. Скопируйте URL и вставьте ниже
-          </p>
-        </div>
-
         <div className="mb-4">
           <label className="text-sm text-slate-500 mb-2 block">URL веб-приложения</label>
           <input
