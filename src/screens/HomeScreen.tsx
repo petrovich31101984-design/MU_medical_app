@@ -73,52 +73,58 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
       </div>
 
       {/* Announcements from Manager */}
-      {announcements.filter(a => a.active).length > 0 && (
-        <div 
-          className="bg-yellow-50 p-4 m-5 rounded-lg"
-          style={{
-            borderImage: 'linear-gradient(to right, #2563eb, #dc2626) 1',
-            borderWidth: '3px',
-            borderStyle: 'solid'
-          }}
-        >
-          <div className="flex items-center mb-2">
-            <span className="text-xl mr-2">📢</span>
-            <h3 className="text-base font-bold text-slate-800">Объявления</h3>
-          </div>
-          <div className="space-y-3">
-            {announcements
-              .filter(a => a.active)
-              .slice(0, 3)
-              .map((announcement) => (
-                <div key={announcement.id} className="bg-white p-3 rounded-lg border border-yellow-200">
-                  <div className="flex justify-between items-start mb-1">
-                    <h4 className="text-sm font-bold text-slate-800 flex-1">
-                      {announcement.title}
-                    </h4>
-                    <span className="text-xs text-slate-400 ml-2 whitespace-nowrap">
-                      {new Date(announcement.date).toLocaleDateString('ru-RU')}
-                    </span>
-                  </div>
-                  <p className="text-sm text-slate-600 leading-relaxed">
-                    {announcement.text}
-                  </p>
-                  <p className="text-xs text-slate-400 mt-2">
-                    От: {announcement.createdBy}
-                  </p>
-                </div>
-              ))}
-          </div>
-          {announcements.filter(a => a.active).length > 3 && (
-            <button
-              className="w-full mt-3 py-2 text-sm text-yellow-700 font-medium hover:bg-yellow-100 rounded-lg transition-colors"
-              onClick={() => onNavigate('Announcements')}
-            >
-              Показать все объявления →
-            </button>
-          )}
+      <div 
+        className="bg-yellow-50 p-4 m-5 rounded-lg"
+        style={{
+          borderImage: 'linear-gradient(to right, #2563eb, #dc2626) 1',
+          borderWidth: '3px',
+          borderStyle: 'solid'
+        }}
+      >
+        <div className="flex items-center mb-2">
+          <span className="text-xl mr-2">📢</span>
+          <h3 className="text-base font-bold text-slate-800">Объявления</h3>
         </div>
-      )}
+        {announcements.filter(a => a.active).length > 0 ? (
+          <>
+            <div className="space-y-3">
+              {announcements
+                .filter(a => a.active)
+                .slice(0, 3)
+                .map((announcement) => (
+                  <div key={announcement.id} className="bg-white p-3 rounded-lg border border-yellow-200">
+                    <div className="flex justify-between items-start mb-1">
+                      <h4 className="text-sm font-bold text-slate-800 flex-1">
+                        {announcement.title}
+                      </h4>
+                      <span className="text-xs text-slate-400 ml-2 whitespace-nowrap">
+                        {new Date(announcement.date).toLocaleDateString('ru-RU')}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-600 leading-relaxed">
+                      {announcement.text}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-2">
+                      От: {announcement.createdBy}
+                    </p>
+                  </div>
+                ))}
+            </div>
+            {announcements.filter(a => a.active).length > 3 && (
+              <button
+                className="w-full mt-3 py-2 text-sm text-yellow-700 font-medium hover:bg-yellow-100 rounded-lg transition-colors"
+                onClick={() => onNavigate('Announcements')}
+              >
+                Показать все объявления →
+              </button>
+            )}
+          </>
+        ) : (
+          <div className="text-center py-4">
+            <p className="text-sm text-slate-500">Нет новых объявлений</p>
+          </div>
+        )}
+      </div>
 
       {/* Menu */}
       <div className="p-5 space-y-3">
