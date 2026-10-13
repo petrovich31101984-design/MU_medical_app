@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useDataStore } from '../store/dataStore';
 import { api } from '../api';
@@ -11,7 +11,19 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
   const { employee, logout } = useAuthStore();
   const { loadAnnouncements, announcements } = useDataStore();
   const [shiftStatus, setShiftStatus] = React.useState(employee?.shiftOpen || false);
-  const [shiftMessage, setShiftMessage] = React.useState('');
+  const [shiftMessage, setShiftMessage] = useState('');
+
+  // Извлекаем имя и отчество из полного имени
+  const getNamePatronymic = () => {
+    if (!employee?.fullName) return '';
+    const parts = employee.fullName.trim().split(/\s+/);
+    if (parts.length >= 3) {
+      return `${parts[1]} ${parts[2]}`;
+    } else if (parts.length === 2) {
+      return parts[1];
+    }
+    return '';
+  };
 
   useEffect(() => {
     if (employee) {
@@ -56,7 +68,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
       <div className="bg-white p-5 flex justify-between items-start border-b border-slate-200">
         <div>
           <p className="text-sm text-slate-500">
-            Здравствуйте, {employee?.fullName ? employee.fullName.split(' ').slice(1, 3).join(' ') : ''}
+            Здравствуйте, {getNamePatronymic()}
           </p>
           <p className="text-xl font-bold text-slate-800 mt-1">{employee?.fullName}</p>
           <p className="text-sm text-slate-500 mt-1">{employee?.position}</p>
