@@ -61,7 +61,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
       <div className="bg-white p-5 flex justify-between items-center border-b border-slate-200">
         <div>
           <p className="text-sm text-slate-500">
-            Здравствуйте, {employee?.fullName || 'Сотрудник'}
+            Здравствуйте, {employee?.fullName ? employee.fullName.split(' ').slice(1, 3).join(' ') : 'Сотрудник'}
           </p>
         </div>
         <button
