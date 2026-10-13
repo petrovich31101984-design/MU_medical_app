@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { api } from '../api';
+import { hashPassword } from '../utils/hash';
 
 export default function LoginScreen() {
   const [personalNumber, setPersonalNumber] = useState('');
@@ -25,7 +26,11 @@ export default function LoginScreen() {
     setLoading(true);
     setError('');
     try {
-      const response = await api.authenticateEmployee(personalNumber, password);
+      // Хэшируем пароль перед отправкой в API
+      const passwordHash = await hashPassword(password);
+      console.log('Password hash:', passwordHash);
+      
+      const response = await api.authenticateEmployee(personalNumber, passwordHash);
       
       console.log('Login response:', response);
       

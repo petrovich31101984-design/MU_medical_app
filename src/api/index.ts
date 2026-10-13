@@ -65,6 +65,15 @@ class ApiService {
       
       // Если Apps Script вернул ошибку внутри данных
       const data = response.data as any;
+      
+      console.log('Apps Script response:', data);
+      
+      // Проверяем наличие поля error в ответе
+      if (data.error) {
+        return { success: false, error: data.error };
+      }
+      
+      // Если Apps Script вернул success: false
       if (data.success === false) {
         return { success: false, error: data.error || 'Неверный персональный номер или пароль' };
       }
