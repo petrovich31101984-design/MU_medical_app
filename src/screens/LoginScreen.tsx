@@ -15,104 +15,30 @@ export default function LoginScreen() {
       return;
     }
 
-    // Проверяем, что база данных подключена
-    const configUrl = api.getConfigUrl();
-    if (!configUrl) {
-      setError('База данных не подключена. Обратитесь к администратору.');
-      return;
-    }
-
     setLoading(true);
     setError('');
     try {
-      // Отправляем обычный пароль - Apps Script сам его захэширует и сравнит с хэшем в БД
       const response = await api.authenticateEmployee(personalNumber, password);
       
-      console.log('=== LOGIN RESPONSE ===');
-      console.log('Full response:', response);
-      console.log('Success:', response.success);
-      console.log('Error:', response.error);
-      console.log('Data:', response.data);
-      
-      // Если API вернул ошибку
-      if (!response.success) {
-        console.log('API returned error:', response.error);
-        setError(response.error || 'Ошибка подключения к базе данных');
-        setLoading(false);
-        return;
-      }
+      if (response.success && response.data) {
+        if (response.data.blocked) {
+          setError('Ваш аккаунт заблокирован');
+          setLoading(false);
+          return;
+        }
 
-      // Если нет данных
-      if (!response.data) {
-        console.log('No data in response');
-        setError('Неверный персональный номер или пароль');
-        setLoading(false);
-        return;
-      }
+        if (response.data.status === 'Уволен') {
+          setError('Ваш аккаунт уволен');
+          setLoading(false);
+          return;
+        }
 
-      // Проверяем, что данные содержат обязательные поля сотрудника
-      let data = response.data as any;
-      
-      console.log('Data type:', typeof data);
-      console.log('Is array:', Array.isArray(data));
-      console.log('Data keys:', Object.keys(data));
-      
-      // Если Apps Script вернул массив, берём первый элемент
-      if (Array.isArray(data)) {
-        console.log('Data is array, taking first element');
-        data = data[0];
+        await login(response.data);
+      } else {
+        setError(response.error || 'Неверный персональный номер или пароль');
       }
-      
-      // Если Apps Script вернул объект с полем data внутри
-      if (data.data && typeof data.data === 'object') {
-        console.log('Data has nested data field');
-        data = data.data;
-      }
-      
-      // Если Apps Script вернул ошибку внутри data
-      if (data.success === false || data.error) {
-        console.log('Apps Script returned error:', data.error);
-        setError(data.error || 'Неверный персональный номер или пароль');
-        setLoading(false);
-        return;
-      }
-
-      console.log('Final employee data:', data);
-
-      // Проверяем наличие хотя бы id (минимальное требование)
-      if (!data.id) {
-        console.error('No id in employee data:', data);
-        setError('Неверный персональный номер или пароль');
-        setLoading(false);
-        return;
-      }
-
-      console.log('Login successful, employee data:', data);
-      
-      if (data.blocked) {
-        setError('Ваш аккаунт заблокирован');
-        setLoading(false);
-        return;
-      }
-
-      if (data.status === 'Уволен') {
-        setError('Ваш аккаунт уволен');
-        setLoading(false);
-        return;
-      }
-
-      // Убеждаемся, что передаем все данные с поддержкой альтернативных имен полей
-      const employeeData = {
-        ...data,
-        fullName: data.fullName || data.full_name || data.name || '',
-        personalNumber: data.personalNumber || data.personal_number || personalNumber,
-      };
-      
-      console.log('Calling login with:', employeeData);
-      await login(employeeData);
     } catch (err) {
-      console.error('Login error:', err);
-      setError('Ошибка подключения к базе данных. Проверьте соединение и попробуйте снова.');
+      setError('Ошибка подключения к серверу');
     } finally {
       setLoading(false);
     }

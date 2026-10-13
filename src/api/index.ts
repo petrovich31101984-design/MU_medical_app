@@ -48,70 +48,13 @@ class ApiService {
 
   // Авторизация сотрудника
   async authenticateEmployee(personalNumber: string, password: string): Promise<ApiResponse<Employee>> {
-    if (!this.scriptUrl) {
-      return { success: false, error: 'База данных не подключена' };
-    }
-
     try {
-      console.log('=== AUTHENTICATE REQUEST ===');
-      console.log('Personal Number:', personalNumber);
-      console.log('Password:', password);
-      
       const response = await this.client.get(
         `${this.scriptUrl}?action=authenticateEmployee&personalNumber=${personalNumber}&password=${password}`
       );
-      
-      console.log('=== AUTHENTICATE RESPONSE ===');
-      console.log('Status:', response.status);
-      console.log('Status Text:', response.statusText);
-      console.log('Data:', response.data);
-      console.log('Data Type:', typeof response.data);
-      console.log('Data Keys:', Object.keys(response.data || {}));
-      
-      // Проверяем, что ответ содержит данные
-      if (!response.data || typeof response.data !== 'object') {
-        console.log('Invalid data format');
-        return { success: false, error: 'Неверный персональный номер или пароль' };
-      }
-      
-      // Если Apps Script вернул ошибку внутри данных
-      const data = response.data as any;
-      
-      // Проверяем наличие поля error в ответе
-      if (data.error) {
-        console.log('Error from Apps Script:', data.error);
-        return { success: false, error: data.error };
-      }
-      
-      // Если Apps Script вернул success: false
-      if (data.success === false) {
-        console.log('Success is false');
-        return { success: false, error: data.error || 'Неверный персональный номер или пароль' };
-      }
-      
-      // Проверяем наличие хотя бы id (минимальное требование)
-      if (!data.id) {
-        console.log('No id in response');
-        return { success: false, error: 'Неверный персональный номер или пароль' };
-      }
-      
-      console.log('Authentication successful, employee:', data);
-      return { success: true, data };
+      return { success: true, data: response.data };
     } catch (error) {
-      console.error('=== AUTHENTICATE ERROR ===');
-      console.error('Error:', error);
-      
-      // Определяем тип ошибки
-      if (error instanceof Error) {
-        if (error.message.includes('Network Error')) {
-          return { success: false, error: 'Нет соединения с базой данных' };
-        }
-        if (error.message.includes('timeout')) {
-          return { success: false, error: 'Превышено время ожидания ответа от базы данных' };
-        }
-      }
-      
-      return { success: false, error: 'Ошибка подключения к базе данных' };
+      return { success: false, error: 'Ошибка авторизации' };
     }
   }
 
