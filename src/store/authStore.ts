@@ -13,6 +13,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
   token: null,
 
   login: async (employee: Employee) => {
+    console.log('Login - employee data:', employee);
     localStorage.setItem('employee', JSON.stringify(employee));
     localStorage.setItem('token', employee.id);
     
@@ -21,6 +22,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
       employee,
       token: employee.id,
     });
+    console.log('Login - store updated, employee:', employee);
   },
 
   logout: async () => {
@@ -39,8 +41,12 @@ export const useAuthStore = create<AuthStore>((set) => ({
       const employeeJson = localStorage.getItem('employee');
       const token = localStorage.getItem('token');
       
+      console.log('LoadSession - employeeJson:', employeeJson);
+      console.log('LoadSession - token:', token);
+      
       if (employeeJson && token) {
         const employee = JSON.parse(employeeJson) as Employee;
+        console.log('LoadSession - parsed employee:', employee);
         set({
           isAuthenticated: true,
           employee,

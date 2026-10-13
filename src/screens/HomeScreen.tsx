@@ -10,23 +10,15 @@ interface HomeScreenProps {
 export default function HomeScreen({ onNavigate }: HomeScreenProps) {
   const { employee, logout } = useAuthStore();
   const { loadAnnouncements, announcements } = useDataStore();
-  const [shiftStatus, setShiftStatus] = React.useState(employee?.shiftOpen || false);
+  const [shiftStatus, setShiftStatus] = useState(false);
   const [shiftMessage, setShiftMessage] = useState('');
 
-  // Извлекаем имя и отчество из полного имени
-  const getNamePatronymic = () => {
-    if (!employee?.fullName) return '';
-    const parts = employee.fullName.trim().split(/\s+/);
-    if (parts.length >= 3) {
-      return `${parts[1]} ${parts[2]}`;
-    } else if (parts.length === 2) {
-      return parts[1];
-    }
-    return '';
-  };
-
+  // Обновляем shiftStatus когда employee загружается
   useEffect(() => {
     if (employee) {
+      console.log('Employee data:', employee);
+      console.log('Full name:', employee.fullName);
+      setShiftStatus(employee.shiftOpen || false);
       loadAnnouncements();
     }
   }, [employee]);
@@ -68,7 +60,26 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
       <div className="bg-white p-5 flex justify-between items-start border-b border-slate-200">
         <div>
           <p className="text-sm text-slate-500">
-            Здравствуйте, {getNamePatronymic()}
+            Здравствуйте, {(() => {
+              console.log('Render - employee:', employee);
+              // Поддержка альтернативных форматов имени
+              const name = employee?.fullName || 
+                          (employee as any)?.full_name || 
+                          (employee as any)?.name || 
+                          '';
+              if (!name) {
+                console.log('No name available');
+                return '';
+              }
+              const parts = name.trim().split(/\s+/);
+              console.log('Name parts:', parts);
+              if (parts.length >= 3) {
+                return `${parts[1]} ${parts[2]}`;
+              } else if (parts.length === 2) {
+                return parts[1];
+              }
+              return name;
+            })()}
           </p>
           <p className="text-xl font-bold text-slate-800 mt-1">{employee?.fullName}</p>
           <p className="text-sm text-slate-500 mt-1">{employee?.position}</p>
