@@ -74,12 +74,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
 
       {/* Announcements from Manager */}
       <div 
-        className="bg-yellow-50 p-4 m-5 rounded-lg"
-        style={{
-          borderImage: 'linear-gradient(to right, #2563eb, #dc2626) 1',
-          borderWidth: '3px',
-          borderStyle: 'solid'
-        }}
+        className="bg-yellow-50 p-4 m-5 rounded-lg border-2 border-yellow-300"
       >
         <div className="flex items-center mb-2">
           <span className="text-xl mr-2">📢</span>
