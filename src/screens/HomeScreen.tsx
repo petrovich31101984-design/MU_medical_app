@@ -56,7 +56,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
   const activeAnnouncements = announcements.filter(a => a.active).length;
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 pb-48">
       {/* Header */}
       <div className="bg-white p-5 flex justify-between items-center border-b border-slate-200">
         <div>
@@ -170,7 +170,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
       </div>
 
       {/* Shift Card */}
-      <div className="bg-white m-5 p-5 rounded-xl border border-slate-200">
+      <div className="fixed bottom-0 left-0 right-0 bg-white p-5 rounded-t-xl border-t border-slate-200 shadow-lg z-50 max-w-lg mx-auto">
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-slate-500">Статус смены</p>
