@@ -48,9 +48,9 @@ export default function LoginScreen() {
     <div className="min-h-screen bg-white flex flex-col justify-between p-5">
       <div className="flex flex-col items-center mt-16">
         <img
-          src="/logo.svg"
+          src="https://raw.githubusercontent.com/petrovich31101984-design/MU_medical_app/creating-a-project-from-github-c0204/public/logo.png"
           alt="АлкоСпас"
-          className="w-32 h-32 mb-5 drop-shadow-lg"
+          className="w-32 h-32 mb-5 drop-shadow-lg rounded-2xl"
         />
         <h1 className="text-3xl font-bold text-red-600 mb-2">АлкоСпас</h1>
         <p className="text-base text-slate-500">Система медицинского учета</p>
