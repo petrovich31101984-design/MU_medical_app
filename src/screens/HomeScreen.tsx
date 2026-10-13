@@ -76,10 +76,6 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
       <div className="m-5 announcement-border">
         {/* Контент */}
         <div className="relative bg-yellow-50 p-4 rounded-[10px]">
-          <div className="flex items-center mb-2">
-            <span className="text-xl mr-2">📢</span>
-            <h3 className="text-base font-bold text-slate-800">Объявления</h3>
-          </div>
           {announcements.filter(a => a.active).length > 0 ? (
             <>
               <div className="space-y-3">
