@@ -57,7 +57,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <div className="bg-white p-5 flex justify-between items-start border-b border-slate-200">
+      <div className="bg-white p-5 flex justify-between items-center border-b border-slate-200">
         <div>
           <p className="text-sm text-slate-500">
             Здравствуйте, {(() => {
