@@ -60,20 +60,20 @@ export default function App() {
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="flex flex-col items-center">
           <div className="relative w-32 h-32 mb-4">
-            {/* Логотип в центре */}
+            {/* Логотип в центре с мерцанием */}
             <img
               src="https://raw.githubusercontent.com/petrovich31101984-design/MU_medical_app/creating-a-project-from-github-c0204/public/logo.png"
               alt="АлкоСпас"
-              className="w-24 h-24 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-2xl"
+              className="w-24 h-24 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-2xl animate-pulse"
             />
             
             {/* Синяя дуга */}
-            <div className="absolute inset-0 animate-spin">
+            <div className="absolute inset-0 animate-spin" style={{ animationDuration: '2s' }}>
               <div className="w-full h-full rounded-full border-4 border-transparent border-t-blue-600 border-r-blue-600"></div>
             </div>
             
             {/* Красная дуга */}
-            <div className="absolute inset-0 animate-spin-reverse">
+            <div className="absolute inset-0 animate-spin" style={{ animationDuration: '2s', animationDelay: '0.5s' }}>
               <div className="w-full h-full rounded-full border-4 border-transparent border-b-red-600 border-l-red-600"></div>
             </div>
           </div>
