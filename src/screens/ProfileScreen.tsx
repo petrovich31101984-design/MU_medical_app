@@ -67,7 +67,7 @@ export default function ProfileScreen({ onBack }: ProfileScreenProps) {
           </div>
 
           <div className="flex justify-between items-center py-3 border-b border-slate-100">
-            <span className="text-sm text-slate-500">Дата найма</span>
+            <span className="text-sm text-slate-500">Дата регистрации</span>
             <span className="text-sm text-slate-800 font-medium">
               {new Date(employee.hireDate).toLocaleDateString('ru-RU')}
             </span>
