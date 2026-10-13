@@ -23,6 +23,7 @@ export default function LoginScreen() {
       if (response.success && response.data) {
         console.log('Login response data:', response.data);
         console.log('Full name:', response.data.fullName);
+        console.log('All fields:', Object.keys(response.data));
         
         if (response.data.blocked) {
           setError('Ваш аккаунт заблокирован');
@@ -36,7 +37,14 @@ export default function LoginScreen() {
           return;
         }
 
-        await login(response.data);
+        // Убеждаемся, что передаем все данные
+        const employeeData = {
+          ...response.data,
+          fullName: response.data.fullName || '',
+        };
+        
+        console.log('Calling login with:', employeeData);
+        await login(employeeData);
       } else {
         setError(response.error || 'Неверный персональный номер или пароль');
       }

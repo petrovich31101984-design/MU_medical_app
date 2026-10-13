@@ -13,14 +13,20 @@ export const useAuthStore = create<AuthStore>((set) => ({
   token: null,
 
   login: async (employee: Employee) => {
+    console.log('Login called with:', employee);
+    
+    // Сохраняем в localStorage
     localStorage.setItem('employee', JSON.stringify(employee));
     localStorage.setItem('token', employee.id);
     
+    // Обновляем store
     set({
       isAuthenticated: true,
-      employee,
+      employee: employee,
       token: employee.id,
     });
+    
+    console.log('Store updated, employee in store:', employee);
   },
 
   logout: async () => {

@@ -18,6 +18,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
     if (employee) {
       console.log('HomeScreen employee:', employee);
       console.log('Full name:', employee.fullName);
+      console.log('Employee keys:', Object.keys(employee));
       setShiftStatus(employee.shiftOpen || false);
       loadAnnouncements();
     }
@@ -60,10 +61,14 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
       <div className="bg-white p-5 flex justify-between items-center border-b border-slate-200">
         <div>
           <p className="text-sm text-slate-500">
-            Здравствуйте, {employee?.fullName || ''}
+            Здравствуйте, {employee?.fullName || 'Сотрудник'}
           </p>
-          <p className="text-xl font-bold text-slate-800 mt-1">{employee?.fullName}</p>
-          <p className="text-sm text-slate-500 mt-1">{employee?.position}</p>
+          <p className="text-xl font-bold text-slate-800 mt-1">
+            {employee?.fullName || 'Не указано'}
+          </p>
+          <p className="text-sm text-slate-500 mt-1">
+            {employee?.position || 'Не указана должность'}
+          </p>
         </div>
         <button
           onClick={logout}
