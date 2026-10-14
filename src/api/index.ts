@@ -163,20 +163,22 @@ class ApiService {
       console.log('Employee ID:', employeeId);
       console.log('URL:', this.scriptUrl);
       
-      const response = await this.client.post(this.scriptUrl, {
-        action: 'updateEmployeeShift',
-        data: { id: employeeId, shiftOpen: true, status: 'Активен' },
-      });
+      // Используем GET запрос для обхода CORS
+      const response = await this.client.get(
+        `${this.scriptUrl}?action=updateEmployeeShift&id=${employeeId}&shiftOpen=true&status=Активен`
+      );
       
       console.log('=== OPEN SHIFT RESPONSE ===');
       console.log('Status:', response.status);
       console.log('Data:', response.data);
       
       return { success: true };
-    } catch (error) {
+    } catch (error: any) {
       console.error('=== OPEN SHIFT ERROR ===');
       console.error('Error:', error);
-      return { success: false, error: 'Ошибка открытия смены' };
+      console.error('Error message:', error.message);
+      console.error('Error response:', error.response?.data);
+      return { success: false, error: 'Ошибка открытия смены. Проверьте консоль для деталей.' };
     }
   }
 
@@ -187,20 +189,22 @@ class ApiService {
       console.log('Employee ID:', employeeId);
       console.log('URL:', this.scriptUrl);
       
-      const response = await this.client.post(this.scriptUrl, {
-        action: 'updateEmployeeShift',
-        data: { id: employeeId, shiftOpen: false, status: 'Неактивен' },
-      });
+      // Используем GET запрос для обхода CORS
+      const response = await this.client.get(
+        `${this.scriptUrl}?action=updateEmployeeShift&id=${employeeId}&shiftOpen=false&status=Неактивен`
+      );
       
       console.log('=== CLOSE SHIFT RESPONSE ===');
       console.log('Status:', response.status);
       console.log('Data:', response.data);
       
       return { success: true };
-    } catch (error) {
+    } catch (error: any) {
       console.error('=== CLOSE SHIFT ERROR ===');
       console.error('Error:', error);
-      return { success: false, error: 'Ошибка закрытия смены' };
+      console.error('Error message:', error.message);
+      console.error('Error response:', error.response?.data);
+      return { success: false, error: 'Ошибка закрытия смены. Проверьте консоль для деталей.' };
     }
   }
 }
