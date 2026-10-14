@@ -15,8 +15,8 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
 
   useEffect(() => {
     if (employee) {
-      // Проверяем статус смены на основе shiftStatus или shiftOpen
-      const isOpen = employee.shiftStatus === 'Активен' || employee.shiftOpen === true;
+      // Проверяем статус смены на основе status или shiftOpen
+      const isOpen = employee.status === 'Активен' || employee.shiftOpen === true;
       setShiftStatus(isOpen);
       loadAnnouncements();
     }
@@ -32,7 +32,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
           setShiftStatus(false);
           setShiftMessage('Смена закрыта');
           // Обновляем данные сотрудника в localStorage
-          const updatedEmployee = { ...employee, shiftOpen: false, shiftStatus: 'Неактивен' };
+          const updatedEmployee = { ...employee, shiftOpen: false, status: 'Неактивен' };
           localStorage.setItem('employee', JSON.stringify(updatedEmployee));
         } else {
           setShiftMessage('Не удалось закрыть смену');
@@ -43,7 +43,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
           setShiftStatus(true);
           setShiftMessage('Смена открыта');
           // Обновляем данные сотрудника в localStorage
-          const updatedEmployee = { ...employee, shiftOpen: true, shiftStatus: 'Активен' };
+          const updatedEmployee = { ...employee, shiftOpen: true, status: 'Активен' };
           localStorage.setItem('employee', JSON.stringify(updatedEmployee));
         } else {
           setShiftMessage('Не удалось открыть смену');
