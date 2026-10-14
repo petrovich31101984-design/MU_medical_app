@@ -2,7 +2,11 @@ import React, { useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { api } from '../api';
 
-export default function LoginScreen() {
+interface LoginScreenProps {
+  onNavigate?: (screen: string) => void;
+}
+
+export default function LoginScreen({ onNavigate }: LoginScreenProps) {
   const [personalNumber, setPersonalNumber] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -130,9 +134,17 @@ export default function LoginScreen() {
         </button>
       </div>
 
-      <p className="text-center text-slate-400 text-xs">
-        © {new Date().getFullYear()} АлкоСпас • Выездная медицинская помощь <span className="text-green-600">(v. 0.1)</span>
-      </p>
+      <div className="flex flex-col items-center gap-3 pb-2">
+        <button
+          onClick={() => onNavigate && onNavigate('Setup')}
+          className="text-sm text-slate-500 hover:text-blue-600 underline transition-colors flex items-center gap-1"
+        >
+          ⚙️ Настройка подключения к БД
+        </button>
+        <p className="text-center text-slate-400 text-xs">
+          © {new Date().getFullYear()} АлкоСпас • Выездная медицинская помощь <span className="text-green-600">(v. 0.1)</span>
+        </p>
+      </div>
     </div>
   );
 }

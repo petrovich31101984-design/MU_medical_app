@@ -115,7 +115,7 @@ export default function App() {
   const renderScreen = () => {
     switch (currentScreen) {
       case 'Login':
-        return <LoginScreen />;
+        return <LoginScreen onNavigate={handleNavigate} />;
       case 'Home':
         return <HomeScreen onNavigate={handleNavigate} />;
       case 'ExpenseSheet':
