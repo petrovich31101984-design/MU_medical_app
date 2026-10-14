@@ -13,6 +13,7 @@ export interface Employee {
   lastActivity: string;
   note: string;
   shiftOpen: boolean;
+  shiftStatus?: string;
 }
 
 export interface Nomenclature {

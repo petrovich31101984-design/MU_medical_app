@@ -160,7 +160,7 @@ class ApiService {
   async openShift(employeeId: string): Promise<ApiResponse<void>> {
     try {
       const response = await this.client.get(
-        `${this.scriptUrl}?action=openShift&employeeId=${employeeId}`
+        `${this.scriptUrl}?action=updateEmployeeShift&id=${employeeId}&shiftStatus=Активен`
       );
       return { success: true };
     } catch (error) {
@@ -172,7 +172,7 @@ class ApiService {
   async closeShift(employeeId: string): Promise<ApiResponse<void>> {
     try {
       const response = await this.client.get(
-        `${this.scriptUrl}?action=closeShift&employeeId=${employeeId}`
+        `${this.scriptUrl}?action=updateEmployeeShift&id=${employeeId}&shiftStatus=Закрыта`
       );
       return { success: true };
     } catch (error) {
