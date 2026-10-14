@@ -47,11 +47,9 @@ export default function LoginScreen() {
   return (
     <div className="min-h-screen bg-white flex flex-col justify-between p-5">
       <div className="flex flex-col items-center mt-8">
-        <img
-          src="https://raw.githubusercontent.com/petrovich31101984-design/MU_medical_app/creating-a-project-from-github-c0204/public/logo.png"
-          alt="АлкоСпас"
-          className="w-32 h-32 mb-5 drop-shadow-lg rounded-2xl"
-        />
+        <div className="w-32 h-32 mb-5 rounded-2xl bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center shadow-lg">
+          <span className="text-white text-5xl font-bold">А</span>
+        </div>
         <h1 className="text-3xl font-bold mb-1">
           <span className="text-blue-700">Алко</span>
           <span className="text-red-600">Спас</span>

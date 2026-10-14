@@ -42,12 +42,9 @@ export default function SetupScreen({ onConnected }: SetupScreenProps) {
     <div className="min-h-screen bg-white flex flex-col justify-between p-5">
       <div className="flex-1 flex flex-col justify-center max-w-md mx-auto w-full">
         <div className="flex flex-col items-center mb-8">
-          <img
-            src="https://raw.githubusercontent.com/petrovich31101984-design/MU_medical_app/creating-a-project-from-github-c0204/public/logo.png"
-            alt="АлкоСпас"
-            className="w-24 h-24 mb-4 drop-shadow-lg rounded-2xl"
-          />
-          <h1 className="text-2xl font-bold mb-1">
+            <div className="w-24 h-24 mb-4 rounded-2xl bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center shadow-lg">
+              <span className="text-white text-4xl font-bold">А</span>
+            </div>          <h1 className="text-2xl font-bold mb-1">
             <span className="text-blue-700">Алко</span>
             <span className="text-red-600">Спас</span>
           </h1>

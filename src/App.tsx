@@ -21,20 +21,23 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('Login');
 
   useEffect(() => {
-    const init = async () => {
-      await api.initialize();
-      await loadSession();
-      
-      const url = api.getConfigUrl();
-      if (!url) {
-        setIsConfigured(false);
-      } else {
-        const testResult = await api.testConnection();
-        setIsConfigured(testResult.success);
-      }
-    };
-    
-    init();
+    // Инициализация API
+    api.initialize().then(() => {
+      // Загрузка сессии
+      loadSession().then(() => {
+        const url = api.getConfigUrl();
+        // Если нет URL, показываем экран настройки
+        if (!url) {
+          setIsConfigured(false);
+        } else {
+          // Если есть URL, показываем экран входа
+          setIsConfigured(true);
+        }
+      });
+    }).catch(error => {
+      console.error('Init error:', error);
+      setIsConfigured(false);
+    });
   }, []);
 
   useEffect(() => {
@@ -63,11 +66,9 @@ export default function App() {
         <div className="flex flex-col items-center">
           <div className="relative w-32 h-32 mb-4">
             {/* Логотип в центре с мерцанием */}
-            <img
-              src="https://raw.githubusercontent.com/petrovich31101984-design/MU_medical_app/creating-a-project-from-github-c0204/public/logo.png"
-              alt="АлкоСпас"
-              className="w-24 h-24 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-2xl animate-pulse"
-            />
+            <div className="w-24 h-24 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center animate-pulse">
+              <span className="text-white text-4xl font-bold">А</span>
+            </div>
             
             {/* SVG с двумя дугами */}
             <svg className="absolute inset-0 w-full h-full animate-spin" style={{ animationDuration: '2s' }} viewBox="0 0 128 128">
