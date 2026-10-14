@@ -80,9 +80,37 @@ class ApiService {
 
   async getNomenclature(): Promise<ApiResponse<Nomenclature[]>> {
     try {
+      console.log('=== GET NOMENCLATURE REQUEST ===');
+      console.log('URL:', `${this.scriptUrl}?action=getNomenclature`);
+      
       const response = await this.client.get(`${this.scriptUrl}?action=getNomenclature`);
-      return { success: true, data: response.data };
-    } catch (error) {
+      
+      console.log('=== GET NOMENCLATURE RESPONSE ===');
+      console.log('Status:', response.status);
+      console.log('Data:', response.data);
+      console.log('Data type:', typeof response.data);
+      console.log('Is array:', Array.isArray(response.data));
+      
+      let data = response.data;
+      
+      // Если Apps Script вернул объект с полем data внутри
+      if (data && data.data && Array.isArray(data.data)) {
+        console.log('Extracting data from nested object');
+        data = data.data;
+      }
+      
+      // Если Apps Script вернул массив
+      if (Array.isArray(data)) {
+        console.log('Nomenclature count:', data.length);
+        return { success: true, data };
+      }
+      
+      console.warn('Unexpected data format:', data);
+      return { success: false, error: 'Неверный формат данных номенклатуры' };
+    } catch (error: any) {
+      console.error('=== GET NOMENCLATURE ERROR ===');
+      console.error('Error:', error);
+      console.error('Error message:', error.message);
       return { success: false, error: 'Ошибка загрузки номенклатуры' };
     }
   }

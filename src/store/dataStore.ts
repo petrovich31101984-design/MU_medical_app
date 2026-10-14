@@ -25,11 +25,16 @@ export const useDataStore = create<DataStore>((set, get) => ({
   loading: false,
 
   loadNomenclature: async () => {
+    console.log('=== LOADING NOMENCLATURE ===');
     set({ loading: true });
     const response = await api.getNomenclature();
+    console.log('Nomenclature response:', response);
+    
     if (response.success && response.data) {
+      console.log('Nomenclature loaded:', response.data.length, 'items');
       set({ nomenclature: response.data, loading: false });
     } else {
+      console.error('Failed to load nomenclature:', response.error);
       set({ loading: false });
     }
   },
