@@ -302,21 +302,41 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                 </div>
               ) : (
                 nomenclature.map((nom, index) => {
-                  // Поддержка альтернативных имен полей
                   const nomData = nom as any;
-                  const name = nomData.name || nomData.наименование || nomData.Наименование || nomData.productName || nomData.title || `Препарат ${index + 1}`;
+                  
+                  // Логируем первый элемент для отладки
+                  if (index === 0) {
+                    console.log('=== NOMENCLATURE ITEM STRUCTURE ===');
+                    console.log('Full item:', nomData);
+                    console.log('All keys:', Object.keys(nomData));
+                  }
+                  
+                  // Получаем название - проверяем все возможные варианты
+                  let name = '';
+                  if (nomData.name) name = nomData.name;
+                  else if (nomData.наименование) name = nomData.наименование;
+                  else if (nomData.Наименование) name = nomData.Наименование;
+                  else if (nomData.productName) name = nomData.productName;
+                  else if (nomData.title) name = nomData.title;
+                  else {
+                    // Если не нашли название, берем первое строковое значение
+                    const firstStringValue = Object.values(nomData).find(val => 
+                      typeof val === 'string' && val.length > 0 && val !== nomData.id
+                    );
+                    name = firstStringValue ? String(firstStringValue) : `Препарат ${index + 1}`;
+                  }
+                  
+                  // Получаем цену
                   const price = nomData.currentPrice || nomData.price || nomData.цена || nomData.Цена || 0;
-                  const category = nomData.category || nomData.категория || nomData.Категория || '';
                   
                   return (
                     <button
                       key={nom.id || index}
                       className="w-full p-4 border-b border-slate-200 flex justify-between items-center hover:bg-slate-50 transition-colors text-left"
-                      onClick={() => addItem({...nom, name, currentPrice: price, category})}
+                      onClick={() => addItem({...nom, name, currentPrice: price})}
                     >
                       <div className="flex-1">
                         <span className="text-base text-slate-800 font-medium block">{name}</span>
-                        {category && <span className="text-xs text-slate-500">{category}</span>}
                       </div>
                       <span className="text-base font-bold text-green-600 ml-2">
                         {price.toLocaleString('ru-RU')} ₽
