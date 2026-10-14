@@ -41,13 +41,17 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (isConfigured === true) {
+    if (isConfigured === true && currentScreen !== 'Setup') {
       setCurrentScreen(isAuthenticated ? 'Home' : 'Login');
     }
   }, [isAuthenticated, isConfigured]);
 
   const handleConnected = () => {
     setIsConfigured(true);
+    setCurrentScreen('Login');
+  };
+
+  const handleBackToLogin = () => {
     setCurrentScreen('Login');
   };
 
@@ -108,7 +112,7 @@ export default function App() {
 
   // Если не настроен URL, показываем экран настройки
   if (!isConfigured) {
-    return <SetupScreen onConnected={handleConnected} />;
+    return <SetupScreen onConnected={handleConnected} onBack={handleBackToLogin} />;
   }
 
   // Рендер текущего экрана
@@ -130,6 +134,8 @@ export default function App() {
         return <ReturnScreen onBack={handleBack} />;
       case 'Settings':
         return <SettingsScreen onBack={handleBack} />;
+      case 'Setup':
+        return <SetupScreen onConnected={handleConnected} onBack={handleBackToLogin} />;
       default:
         return <HomeScreen onNavigate={handleNavigate} />;
     }

@@ -3,9 +3,10 @@ import { api } from '../api';
 
 interface SetupScreenProps {
   onConnected: () => void;
+  onBack?: () => void;
 }
 
-export default function SetupScreen({ onConnected }: SetupScreenProps) {
+export default function SetupScreen({ onConnected, onBack }: SetupScreenProps) {
   const [scriptUrl, setScriptUrl] = useState('');
   const [testing, setTesting] = useState(false);
   const [error, setError] = useState('');
@@ -38,6 +39,14 @@ export default function SetupScreen({ onConnected }: SetupScreenProps) {
 
   return (
     <div className="min-h-screen bg-white flex flex-col justify-between p-5">
+      {onBack && (
+        <button
+          onClick={onBack}
+          className="text-blue-600 self-start p-2 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-1"
+        >
+          ← Назад
+        </button>
+      )}
       <div className="flex-1 flex flex-col justify-center max-w-md mx-auto w-full">
         <div className="flex flex-col items-center mb-8">
           <img
