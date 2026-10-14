@@ -29,6 +29,7 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
 
   const addItem = (nom: Nomenclature) => {
     const existingItem = items.find(i => i.nomenclatureId === nom.id);
+    const price = nom.currentPrice || 0;
     
     if (existingItem) {
       setItems(items.map(i => 
@@ -42,8 +43,8 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
         name: nom.name,
         category: nom.category,
         quantity: 1,
-        pricePerUnit: nom.currentPrice,
-        total: nom.currentPrice,
+        pricePerUnit: price,
+        total: price,
       }]);
     }
     
@@ -224,7 +225,7 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                   +
                 </button>
                 <span className="text-base font-bold text-green-600 ml-auto">
-                  {item.total.toLocaleString('ru-RU')} ₽
+                  {(item.total || 0).toLocaleString('ru-RU')} ₽
                 </span>
               </div>
             </div>
@@ -234,7 +235,7 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
             <div className="flex justify-between items-center p-4 bg-slate-100 rounded-lg mt-2">
               <span className="text-lg font-bold text-slate-800">Итого:</span>
               <span className="text-2xl font-bold text-green-600">
-                {totalAmount.toLocaleString('ru-RU')} ₽
+                {(totalAmount || 0).toLocaleString('ru-RU')} ₽
               </span>
             </div>
           )}
@@ -302,7 +303,7 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                   >
                     <span className="text-base text-slate-800 flex-1">{nom.name}</span>
                     <span className="text-base font-bold text-green-600">
-                      {nom.currentPrice.toLocaleString('ru-RU')} ₽
+                      {(nom.currentPrice || 0).toLocaleString('ru-RU')} ₽
                     </span>
                   </button>
                 ))
