@@ -102,6 +102,10 @@ class ApiService {
       // Если Apps Script вернул массив
       if (Array.isArray(data)) {
         console.log('Nomenclature count:', data.length);
+        if (data.length > 0) {
+          console.log('First item structure:', data[0]);
+          console.log('First item keys:', Object.keys(data[0]));
+        }
         return { success: true, data };
       }
       

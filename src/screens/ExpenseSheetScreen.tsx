@@ -28,8 +28,14 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
   }, []);
 
   const addItem = (nom: Nomenclature) => {
+    const nomData = nom as any;
+    const name = nomData.name || nomData.наименование || nomData.Наименование || nomData.productName || nomData.title || 'Препарат';
+    const price = nomData.currentPrice || nomData.price || nomData.цена || nomData.Цена || 0;
+    const category = nomData.category || nomData.категория || nomData.Категория || '';
+    
+    console.log('Adding item:', { name, price, category });
+    
     const existingItem = items.find(i => i.nomenclatureId === nom.id);
-    const price = nom.currentPrice || 0;
     
     if (existingItem) {
       setItems(items.map(i => 
@@ -40,8 +46,8 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
     } else {
       setItems([...items, {
         nomenclatureId: nom.id,
-        name: nom.name,
-        category: nom.category,
+        name: name,
+        category: category,
         quantity: 1,
         pricePerUnit: price,
         total: price,
@@ -295,18 +301,29 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                   </button>
                 </div>
               ) : (
-                nomenclature.map(nom => (
-                  <button
-                    key={nom.id}
-                    className="w-full p-4 border-b border-slate-200 flex justify-between items-center hover:bg-slate-50 transition-colors text-left"
-                    onClick={() => addItem(nom)}
-                  >
-                    <span className="text-base text-slate-800 flex-1">{nom.name}</span>
-                    <span className="text-base font-bold text-green-600">
-                      {(nom.currentPrice || 0).toLocaleString('ru-RU')} ₽
-                    </span>
-                  </button>
-                ))
+                nomenclature.map((nom, index) => {
+                  // Поддержка альтернативных имен полей
+                  const nomData = nom as any;
+                  const name = nomData.name || nomData.наименование || nomData.Наименование || nomData.productName || nomData.title || `Препарат ${index + 1}`;
+                  const price = nomData.currentPrice || nomData.price || nomData.цена || nomData.Цена || 0;
+                  const category = nomData.category || nomData.категория || nomData.Категория || '';
+                  
+                  return (
+                    <button
+                      key={nom.id || index}
+                      className="w-full p-4 border-b border-slate-200 flex justify-between items-center hover:bg-slate-50 transition-colors text-left"
+                      onClick={() => addItem({...nom, name, currentPrice: price, category})}
+                    >
+                      <div className="flex-1">
+                        <span className="text-base text-slate-800 font-medium block">{name}</span>
+                        {category && <span className="text-xs text-slate-500">{category}</span>}
+                      </div>
+                      <span className="text-base font-bold text-green-600 ml-2">
+                        {price.toLocaleString('ru-RU')} ₽
+                      </span>
+                    </button>
+                  );
+                })
               )}
             </div>
             <button
