@@ -67,7 +67,7 @@ export default function App() {
           <div className="relative w-32 h-32 mb-4">
             {/* Логотип в центре с мерцанием */}
             <img
-              src="https://image.qwenlm.ai/generated-images/542ec650-dc7d-4399-8c46-ab96e0e62295/_result.png"
+              src="https://raw.githubusercontent.com/petrovich31101984-design/MU_medical_app/creating-a-project-from-github-c0204/public/logo.png"
               alt="АлкоСпас"
               className="w-24 h-24 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-2xl animate-pulse"
             />

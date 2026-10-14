@@ -70,7 +70,7 @@ export default function LoginScreen() {
     <div className="min-h-screen bg-white flex flex-col justify-between p-5">
       <div className="flex flex-col items-center mt-8">
         <img
-          src="https://image.qwenlm.ai/generated-images/542ec650-dc7d-4399-8c46-ab96e0e62295/_result.png"
+          src="https://raw.githubusercontent.com/petrovich31101984-design/MU_medical_app/creating-a-project-from-github-c0204/public/logo.png"
           alt="АлкоСпас"
           className="w-32 h-32 mb-5 drop-shadow-lg rounded-2xl"
         />
