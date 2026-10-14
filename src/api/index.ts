@@ -172,7 +172,7 @@ class ApiService {
   async closeShift(employeeId: string): Promise<ApiResponse<void>> {
     try {
       const response = await this.client.get(
-        `${this.scriptUrl}?action=updateEmployeeShift&id=${employeeId}&shiftStatus=Закрыта`
+        `${this.scriptUrl}?action=updateEmployeeShift&id=${employeeId}&shiftStatus=Неактивен`
       );
       return { success: true };
     } catch (error) {

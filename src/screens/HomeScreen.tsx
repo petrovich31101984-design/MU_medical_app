@@ -32,7 +32,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
           setShiftStatus(false);
           setShiftMessage('Смена закрыта');
           // Обновляем данные сотрудника в localStorage
-          const updatedEmployee = { ...employee, shiftOpen: false, shiftStatus: 'Закрыта' };
+          const updatedEmployee = { ...employee, shiftOpen: false, shiftStatus: 'Неактивен' };
           localStorage.setItem('employee', JSON.stringify(updatedEmployee));
         } else {
           setShiftMessage('Не удалось закрыть смену');
