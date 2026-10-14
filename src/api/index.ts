@@ -159,11 +159,23 @@ class ApiService {
   // Открытие смены
   async openShift(employeeId: string): Promise<ApiResponse<void>> {
     try {
-      const response = await this.client.get(
-        `${this.scriptUrl}?action=updateEmployeeShift&id=${employeeId}&status=Активен&shiftOpen=да`
-      );
+      console.log('=== OPEN SHIFT REQUEST ===');
+      console.log('Employee ID:', employeeId);
+      console.log('URL:', this.scriptUrl);
+      
+      const response = await this.client.post(this.scriptUrl, {
+        action: 'updateEmployeeShift',
+        data: { id: employeeId, shiftOpen: true, status: 'Активен' },
+      });
+      
+      console.log('=== OPEN SHIFT RESPONSE ===');
+      console.log('Status:', response.status);
+      console.log('Data:', response.data);
+      
       return { success: true };
     } catch (error) {
+      console.error('=== OPEN SHIFT ERROR ===');
+      console.error('Error:', error);
       return { success: false, error: 'Ошибка открытия смены' };
     }
   }
@@ -171,11 +183,23 @@ class ApiService {
   // Закрытие смены
   async closeShift(employeeId: string): Promise<ApiResponse<void>> {
     try {
-      const response = await this.client.get(
-        `${this.scriptUrl}?action=updateEmployeeShift&id=${employeeId}&status=Неактивен&shiftOpen=нет`
-      );
+      console.log('=== CLOSE SHIFT REQUEST ===');
+      console.log('Employee ID:', employeeId);
+      console.log('URL:', this.scriptUrl);
+      
+      const response = await this.client.post(this.scriptUrl, {
+        action: 'updateEmployeeShift',
+        data: { id: employeeId, shiftOpen: false, status: 'Неактивен' },
+      });
+      
+      console.log('=== CLOSE SHIFT RESPONSE ===');
+      console.log('Status:', response.status);
+      console.log('Data:', response.data);
+      
       return { success: true };
     } catch (error) {
+      console.error('=== CLOSE SHIFT ERROR ===');
+      console.error('Error:', error);
       return { success: false, error: 'Ошибка закрытия смены' };
     }
   }
