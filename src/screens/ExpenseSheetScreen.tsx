@@ -13,7 +13,7 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
   
   const [patientName, setPatientName] = useState('');
   const [patientBirthDate, setPatientBirthDate] = useState('');
-  const [callCategory, setCallCategory] = useState('Первичный');
+  const [callCategory, setCallCategory] = useState('');
   const [therapyName, setTherapyName] = useState('');
   const [therapyCost, setTherapyCost] = useState('');
   const [items, setItems] = useState<ExpenseItem[]>([]);
@@ -22,6 +22,7 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
 
   useEffect(() => {
     console.log('=== EXPENSE SHEET SCREEN MOUNTED ===');
@@ -164,22 +165,48 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
 
           <div className="mb-4">
             <label className="text-sm text-slate-500 mb-2 block">Категория выезда</label>
-            <div className="flex gap-2">
-              {['Первичный', 'Повторный', 'Курс'].map(cat => (
-                <button
-                  key={cat}
-                  className={`flex-1 py-3 px-4 rounded-lg border text-sm transition-colors ${
-                    callCategory === cat
-                      ? 'bg-blue-600 border-blue-600 text-white font-bold'
-                      : 'border-slate-200 text-slate-500 hover:bg-slate-50'
-                  }`}
-                  onClick={() => setCallCategory(cat)}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
+            <button
+              className="w-full py-3 px-4 rounded-lg border border-slate-200 text-left text-base transition-colors hover:bg-slate-50 flex justify-between items-center"
+              onClick={() => setShowCategoryModal(true)}
+            >
+              <span className={callCategory ? 'text-slate-800' : 'text-slate-400'}>
+                {callCategory || 'Выберите категорию'}
+              </span>
+              <span className="text-slate-400">▼</span>
+            </button>
           </div>
+
+          {showCategoryModal && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-xl p-5 w-full max-w-md">
+                <h3 className="text-xl font-bold text-slate-800 mb-4">Выберите категорию выезда</h3>
+                <div className="space-y-2">
+                  {['Вызов однократно', 'Вызов + повторы', 'Курс', 'Госпитализация', 'Мед. отвод', 'Неустойка'].map(cat => (
+                    <button
+                      key={cat}
+                      className={`w-full py-3 px-4 rounded-lg border text-left text-base transition-colors ${
+                        callCategory === cat
+                          ? 'bg-blue-600 border-blue-600 text-white font-bold'
+                          : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+                      }`}
+                      onClick={() => {
+                        setCallCategory(cat);
+                        setShowCategoryModal(false);
+                      }}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  className="w-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-3 rounded-lg mt-4 transition-colors"
+                  onClick={() => setShowCategoryModal(false)}
+                >
+                  Отмена
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="mb-4">
             <label className="text-sm text-slate-500 mb-2 block">Название терапии</label>
