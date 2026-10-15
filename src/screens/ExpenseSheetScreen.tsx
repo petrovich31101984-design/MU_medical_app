@@ -27,20 +27,20 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
     loadNomenclature();
   }, []);
 
-  const addItem = (nom: Nomenclature) => {
+  const addItem = (nom: Nomenclature, quantity: number = 1) => {
     const nomData = nom as any;
     const name = nomData.name || nomData.наименование || nomData.Наименование || nomData.productName || nomData.title || 'Препарат';
     const price = nomData.currentPrice || nomData.price || nomData.цена || nomData.Цена || 0;
     const category = nomData.category || nomData.категория || nomData.Категория || '';
     
-    console.log('Adding item:', { name, price, category });
+    console.log('Adding item:', { name, price, category, quantity });
     
     const existingItem = items.find(i => i.nomenclatureId === nom.id);
     
     if (existingItem) {
       setItems(items.map(i => 
         i.nomenclatureId === nom.id 
-          ? { ...i, quantity: i.quantity + 1, total: (i.quantity + 1) * i.pricePerUnit }
+          ? { ...i, quantity: i.quantity + quantity, total: (i.quantity + quantity) * i.pricePerUnit }
           : i
       ));
     } else {
@@ -48,13 +48,11 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
         nomenclatureId: nom.id,
         name: name,
         category: category,
-        quantity: 1,
+        quantity: quantity,
         pricePerUnit: price,
-        total: price,
+        total: price * quantity,
       }]);
     }
-    
-    setShowNomenclaturePicker(false);
   };
 
   const updateQuantity = (nomenclatureId: string, quantity: number) => {
@@ -304,19 +302,10 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                 nomenclature.map((nom, index) => {
                   const nomData = nom as any;
                   
-                  // Логируем первый элемент для отладки
-                  if (index === 0) {
-                    console.log('=== NOMENCLATURE ITEM STRUCTURE ===');
-                    console.log('Full item:', nomData);
-                    console.log('All keys:', Object.keys(nomData));
-                    console.log('All values:', Object.values(nomData));
-                  }
-                  
                   // Получаем название - исключаем ID и проверяем все строковые поля
                   let name = '';
                   const excludeFields = ['id', 'ID', 'Id'];
                   
-                  // Ищем первое подходящее строковое поле
                   for (const [key, value] of Object.entries(nomData)) {
                     if (!excludeFields.includes(key) && 
                         typeof value === 'string' && 
@@ -327,27 +316,39 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                     }
                   }
                   
-                  // Если не нашли, используем ID как fallback
                   if (!name) {
                     name = nomData.name || nomData.id || `Препарат ${index + 1}`;
                   }
                   
-                  // Получаем цену
                   const price = nomData.currentPrice || nomData.price || nomData.цена || nomData.Цена || 0;
                   
                   return (
-                    <button
+                    <div
                       key={nom.id || index}
-                      className="w-full p-4 border-b border-slate-200 flex justify-between items-center hover:bg-slate-50 transition-colors text-left"
-                      onClick={() => addItem({...nom, name, currentPrice: price})}
+                      className="p-4 border-b border-slate-200 flex items-center gap-3"
                     >
                       <div className="flex-1">
-                        <span className="text-base text-slate-800 font-medium block">{name}</span>
+                        <span className="text-base text-slate-800 font-medium">{name}</span>
                       </div>
-                      <span className="text-base font-bold text-green-600 ml-2">
-                        {price.toLocaleString('ru-RU')} ₽
-                      </span>
-                    </button>
+                      <input
+                        type="number"
+                        min="1"
+                        defaultValue="1"
+                        className="w-20 border border-slate-200 rounded-lg p-2 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Кол-во"
+                        id={`qty-${nom.id || index}`}
+                      />
+                      <button
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+                        onClick={() => {
+                          const input = document.getElementById(`qty-${nom.id || index}`) as HTMLInputElement;
+                          const qty = parseInt(input.value) || 1;
+                          addItem({...nom, name, currentPrice: price}, qty);
+                        }}
+                      >
+                        +
+                      </button>
+                    </div>
                   );
                 })
               )}
