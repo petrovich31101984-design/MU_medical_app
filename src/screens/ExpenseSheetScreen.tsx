@@ -214,7 +214,37 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
             + Добавить
           </button>
 
-          {[...items].sort((a, b) => a.name.localeCompare(b.name, 'ru')).map(item => (
+          {[...items].sort((a, b) => {
+            const russianAlphabet = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ';
+            const nameA = a.name.toUpperCase();
+            const nameB = b.name.toUpperCase();
+            
+            for (let i = 0; i < Math.min(nameA.length, nameB.length); i++) {
+              const charA = nameA[i];
+              const charB = nameB[i];
+              
+              const indexA = russianAlphabet.indexOf(charA);
+              const indexB = russianAlphabet.indexOf(charB);
+              
+              // Если оба символа в русском алфавите
+              if (indexA !== -1 && indexB !== -1) {
+                if (indexA !== indexB) {
+                  return indexA - indexB;
+                }
+              } else if (indexA !== -1) {
+                return -1; // Русские буквы перед другими
+              } else if (indexB !== -1) {
+                return 1;
+              } else {
+                // Оба символа не в русском алфавите, сравниваем обычно
+                if (charA !== charB) {
+                  return charA < charB ? -1 : 1;
+                }
+              }
+            }
+            
+            return nameA.length - nameB.length;
+          }).map(item => (
             <div key={item.nomenclatureId} className="bg-slate-50 p-3 rounded-lg mb-2 border border-slate-200">
               <div className="flex justify-between items-center">
                 <p className="text-sm text-slate-700 flex-1">{item.name}</p>
@@ -283,6 +313,7 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                 </div>
               ) : (
                 [...nomenclature].sort((a, b) => {
+                  const russianAlphabet = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ';
                   const getName = (nom: any) => {
                     if (nom.name && typeof nom.name === 'string' && nom.name.length > 0) return nom.name;
                     if (nom.наименование && typeof nom.наименование === 'string') return nom.наименование;
@@ -297,7 +328,35 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                     }
                     return '';
                   };
-                  return getName(a).localeCompare(getName(b), 'ru');
+                  
+                  const nameA = getName(a).toUpperCase();
+                  const nameB = getName(b).toUpperCase();
+                  
+                  for (let i = 0; i < Math.min(nameA.length, nameB.length); i++) {
+                    const charA = nameA[i];
+                    const charB = nameB[i];
+                    
+                    const indexA = russianAlphabet.indexOf(charA);
+                    const indexB = russianAlphabet.indexOf(charB);
+                    
+                    // Если оба символа в русском алфавите
+                    if (indexA !== -1 && indexB !== -1) {
+                      if (indexA !== indexB) {
+                        return indexA - indexB;
+                      }
+                    } else if (indexA !== -1) {
+                      return -1; // Русские буквы перед другими
+                    } else if (indexB !== -1) {
+                      return 1;
+                    } else {
+                      // Оба символа не в русском алфавите, сравниваем обычно
+                      if (charA !== charB) {
+                        return charA < charB ? -1 : 1;
+                      }
+                    }
+                  }
+                  
+                  return nameA.length - nameB.length;
                 }).map((nom, index) => {
                   const nomData = nom as any;
                   
