@@ -191,6 +191,7 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                       }`}
                       onClick={() => {
                         setCallCategory(cat);
+                        setTherapyName('');
                         setShowCategoryModal(false);
                       }}
                     >
@@ -201,6 +202,7 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                     className="w-full py-3 px-4 rounded-lg border border-red-200 text-left text-base transition-colors text-red-600 hover:bg-red-50"
                     onClick={() => {
                       setCallCategory('');
+                      setTherapyName('');
                       setShowCategoryModal(false);
                     }}
                   >
@@ -217,16 +219,49 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
             </div>
           )}
 
-          <div className="mb-4">
-            <label className="text-sm text-slate-500 mb-2 block">Название терапии</label>
-            <input
-              type="text"
-              className="w-full border border-slate-200 rounded-lg p-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={therapyName}
-              onChange={(e) => setTherapyName(e.target.value)}
-              placeholder="Введите название терапии"
-            />
-          </div>
+          {(callCategory === 'Вызов однократно' || callCategory === 'Вызов + повторы') && (
+            <div className="mb-4">
+              <label className="text-sm text-slate-500 mb-2 block">Название терапии</label>
+              <select
+                className="w-full border border-slate-200 rounded-lg p-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                value={therapyName}
+                onChange={(e) => setTherapyName(e.target.value)}
+              >
+                <option value="">Выберите тип терапии</option>
+                <option value="Обычное очищение">Обычное очищение</option>
+                <option value="Двойное очищение">Двойное очищение</option>
+                <option value="Глубокое очищение">Глубокое очищение</option>
+                <option value="3 Detox">3 Detox</option>
+                <option value="4 Detox">4 Detox</option>
+                <option value="5 Detox">5 Detox</option>
+                <option value="Smart Detox">Smart Detox</option>
+              </select>
+            </div>
+          )}
+
+          {callCategory === 'Курс' && (
+            <div className="mb-4">
+              <label className="text-sm text-slate-500 mb-2 block">Название терапии</label>
+              <select
+                className="w-full border border-slate-200 rounded-lg p-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                value={therapyName}
+                onChange={(e) => setTherapyName(e.target.value)}
+              >
+                <option value="">Выберите тип терапии</option>
+                <option value="Восстановление стандарт">Восстановление стандарт</option>
+                <option value="Восстановление стандарт +">Восстановление стандарт +</option>
+                <option value="Восстановление максимал">Восстановление максимал</option>
+                <option value="Восстановление + кардио">Восстановление + кардио</option>
+                <option value="Восстановление + нейрооптимизация (NO терапия)">Восстановление + нейрооптимизация (NO терапия)</option>
+                <option value="Нейро Рестарт">Нейро Рестарт</option>
+                <option value="Красота и молодость">Красота и молодость</option>
+                <option value="Терапия IQ - 1">Терапия IQ - 1</option>
+                <option value="Терапия IQ - 2">Терапия IQ - 2</option>
+                <option value="Повышение иммунитета-1">Повышение иммунитета-1</option>
+                <option value="Повышение иммунитета - 2">Повышение иммунитета - 2</option>
+              </select>
+            </div>
+          )}
 
           <div className="mb-4">
             <label className="text-sm text-slate-500 mb-2 block">Стоимость терапии (₽)</label>
