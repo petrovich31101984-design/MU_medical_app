@@ -309,21 +309,27 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                     console.log('=== NOMENCLATURE ITEM STRUCTURE ===');
                     console.log('Full item:', nomData);
                     console.log('All keys:', Object.keys(nomData));
+                    console.log('All values:', Object.values(nomData));
                   }
                   
-                  // Получаем название - проверяем все возможные варианты
+                  // Получаем название - исключаем ID и проверяем все строковые поля
                   let name = '';
-                  if (nomData.name) name = nomData.name;
-                  else if (nomData.наименование) name = nomData.наименование;
-                  else if (nomData.Наименование) name = nomData.Наименование;
-                  else if (nomData.productName) name = nomData.productName;
-                  else if (nomData.title) name = nomData.title;
-                  else {
-                    // Если не нашли название, берем первое строковое значение
-                    const firstStringValue = Object.values(nomData).find(val => 
-                      typeof val === 'string' && val.length > 0 && val !== nomData.id
-                    );
-                    name = firstStringValue ? String(firstStringValue) : `Препарат ${index + 1}`;
+                  const excludeFields = ['id', 'ID', 'Id'];
+                  
+                  // Ищем первое подходящее строковое поле
+                  for (const [key, value] of Object.entries(nomData)) {
+                    if (!excludeFields.includes(key) && 
+                        typeof value === 'string' && 
+                        value.length > 0 && 
+                        !value.startsWith('NOM-')) {
+                      name = value;
+                      break;
+                    }
+                  }
+                  
+                  // Если не нашли, используем ID как fallback
+                  if (!name) {
+                    name = nomData.name || nomData.id || `Препарат ${index + 1}`;
                   }
                   
                   // Получаем цену
