@@ -112,6 +112,8 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
         archived: false,
       });
 
+      console.log('Create expense sheet result:', result);
+
       if (result) {
         setSuccess('Лист расхода создан!');
         setTimeout(() => onBack(), 2000);

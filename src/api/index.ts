@@ -121,12 +121,26 @@ class ApiService {
 
   async createExpenseSheet(sheet: Omit<ExpenseSheet, 'id'>): Promise<ApiResponse<ExpenseSheet>> {
     try {
-      const sheetJson = encodeURIComponent(JSON.stringify(sheet));
-      const response = await this.client.get(
-        `${this.scriptUrl}?action=addExpenseSheet&data=${sheetJson}`
-      );
-      return { success: true, data: response.data };
-    } catch (error) {
+      console.log('=== CREATE EXPENSE SHEET REQUEST ===');
+      console.log('Sheet data:', sheet);
+      
+      await fetch(this.scriptUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'addExpenseSheet',
+          data: sheet,
+        }),
+      });
+      
+      console.log('=== CREATE EXPENSE SHEET - Request sent (no-cors mode) ===');
+      return { success: true };
+    } catch (error: any) {
+      console.error('=== CREATE EXPENSE SHEET ERROR ===');
+      console.error('Error:', error);
       return { success: false, error: 'Ошибка создания листа расхода' };
     }
   }

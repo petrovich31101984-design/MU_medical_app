@@ -70,13 +70,21 @@ export const useDataStore = create<DataStore>((set, get) => ({
   },
 
   createExpenseSheet: async (sheet) => {
+    console.log('=== DATA STORE: Creating expense sheet ===');
+    console.log('Sheet data:', sheet);
+    
     const response = await api.createExpenseSheet(sheet);
+    console.log('API response:', response);
+    
     if (response.success) {
+      console.log('Expense sheet created successfully');
       const employeeId = sheet.employeeId;
       await get().loadExpenseSheets(employeeId);
       return true;
+    } else {
+      console.error('Failed to create expense sheet:', response.error);
+      return false;
     }
-    return false;
   },
 
   sendMessage: async (message) => {
