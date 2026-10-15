@@ -330,25 +330,48 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                       <div className="flex-1">
                         <span className="text-base text-slate-800 font-medium">{name}</span>
                       </div>
+                      <button
+                        className="bg-red-600 hover:bg-red-700 text-white font-bold w-8 h-8 rounded-lg transition-colors flex items-center justify-center"
+                        onClick={() => {
+                          const input = document.getElementById(`qty-${nom.id || index}`) as HTMLInputElement;
+                          const currentVal = parseInt(input.value) || 0;
+                          if (currentVal > 0) {
+                            input.value = String(currentVal - 1);
+                          }
+                        }}
+                      >
+                        -
+                      </button>
                       <input
                         type="number"
-                        min="1"
+                        min="0"
                         defaultValue="0"
-                        className="w-20 border border-slate-200 rounded-lg p-2 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Кол-во"
+                        className="w-16 border border-slate-200 rounded-lg p-2 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="0"
                         id={`qty-${nom.id || index}`}
                       />
                       <button
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold w-8 h-8 rounded-lg transition-colors flex items-center justify-center"
+                        onClick={() => {
+                          const input = document.getElementById(`qty-${nom.id || index}`) as HTMLInputElement;
+                          const currentVal = parseInt(input.value) || 0;
+                          input.value = String(currentVal + 1);
+                        }}
+                      >
+                        +
+                      </button>
+                      <button
+                        className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-lg transition-colors ml-2"
                         onClick={() => {
                           const input = document.getElementById(`qty-${nom.id || index}`) as HTMLInputElement;
                           const qty = parseInt(input.value) || 0;
                           if (qty > 0) {
                             addItem({...nom, name, currentPrice: price}, qty);
+                            input.value = '0';
                           }
                         }}
                       >
-                        +
+                        ✓
                       </button>
                     </div>
                   );
