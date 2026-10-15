@@ -207,34 +207,14 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
           </button>
 
           {items.map(item => (
-            <div key={item.nomenclatureId} className="bg-slate-50 p-4 rounded-lg mb-3 border border-slate-200">
-              <div className="flex justify-between items-start mb-3">
-                <p className="text-base font-bold text-slate-800 flex-1">{item.name}</p>
+            <div key={item.nomenclatureId} className="bg-slate-50 p-3 rounded-lg mb-2 border border-slate-200">
+              <div className="flex justify-between items-center">
+                <p className="text-sm text-slate-700 flex-1">{item.name}</p>
                 {item.category && (
-                  <span className="text-xs text-slate-500 bg-slate-200 px-2 py-1 rounded">
+                  <span className="text-xs text-slate-500 bg-slate-200 px-2 py-1 rounded ml-2">
                     {item.category}
                   </span>
                 )}
-              </div>
-              <div className="flex items-center">
-                <button
-                  className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-800 hover:bg-slate-300 transition-colors"
-                  onClick={() => updateQuantity(item.nomenclatureId, item.quantity - 1)}
-                >
-                  -
-                </button>
-                <span className="text-lg font-bold text-slate-800 mx-4 min-w-[30px] text-center">
-                  {item.quantity}
-                </span>
-                <button
-                  className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-800 hover:bg-slate-300 transition-colors"
-                  onClick={() => updateQuantity(item.nomenclatureId, item.quantity + 1)}
-                >
-                  +
-                </button>
-                <span className="text-base font-bold text-blue-600 ml-auto">
-                  шт.
-                </span>
               </div>
             </div>
           ))}
@@ -373,7 +353,11 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
             <button
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-lg mt-4 transition-colors"
               onClick={() => {
+                console.log('=== SAVE BUTTON CLICKED ===');
+                console.log('Total nomenclature items:', nomenclature.length);
+                
                 // Добавляем все препараты с количеством > 0
+                let addedCount = 0;
                 nomenclature.forEach((nom, index) => {
                   const nomData = nom as any;
                   
@@ -404,14 +388,25 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                   
                   const price = nomData.currentPrice || nomData.price || nomData.цена || nomData.Цена || 0;
                   
-                  const input = document.getElementById(`qty-${nom.id || index}`) as HTMLInputElement;
+                  const inputId = `qty-${nom.id || index}`;
+                  const input = document.getElementById(inputId) as HTMLInputElement;
+                  
+                  if (!input) {
+                    console.error(`Input not found for ${name} (id: ${inputId})`);
+                    return;
+                  }
+                  
                   const qty = parseInt(input.value) || 0;
+                  console.log(`Processing ${name}: qty=${qty}`);
                   
                   if (qty > 0) {
                     addItem({...nom, name, currentPrice: price}, qty);
                     input.value = '0';
+                    addedCount++;
                   }
                 });
+                
+                console.log(`Total items added: ${addedCount}`);
                 setShowNomenclaturePicker(false);
               }}
             >
