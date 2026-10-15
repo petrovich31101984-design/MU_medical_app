@@ -127,14 +127,14 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="bg-white p-4 border-b border-slate-200 flex items-center">
+      <div className="bg-white p-4 border-b border-slate-200 flex items-center relative">
         <button
           onClick={onBack}
           className="text-blue-600 mr-4 p-2 hover:bg-blue-50 rounded-lg transition-colors"
         >
           ← Назад
         </button>
-        <h1 className="text-lg font-bold text-slate-800">Лист расхода</h1>
+        <h1 className="text-lg font-bold text-slate-800 absolute left-1/2 transform -translate-x-1/2">Лист расхода</h1>
       </div>
 
       <div className="p-5 max-w-lg mx-auto">
