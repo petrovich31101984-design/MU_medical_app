@@ -197,6 +197,15 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                       {cat}
                     </button>
                   ))}
+                  <button
+                    className="w-full py-3 px-4 rounded-lg border border-red-200 text-left text-base transition-colors text-red-600 hover:bg-red-50"
+                    onClick={() => {
+                      setCallCategory('');
+                      setShowCategoryModal(false);
+                    }}
+                  >
+                    Очистить
+                  </button>
                 </div>
                 <button
                   className="w-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-3 rounded-lg mt-4 transition-colors"
