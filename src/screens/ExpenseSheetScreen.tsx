@@ -27,17 +27,17 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
     loadNomenclature();
   }, []);
 
-  const addItem = (nom: Nomenclature, quantity: number = 1) => {
+  const addItem = (nom: Nomenclature, quantity: number = 1, nomIndex?: number) => {
     const nomData = nom as any;
     const name = nomData.name || nomData.наименование || nomData.Наименование || nomData.productName || nomData.title || 'Препарат';
     const price = nomData.currentPrice || nomData.price || nomData.цена || nomData.Цена || 0;
     const category = nomData.category || nomData.категория || nomData.Категория || '';
     
     // Используем nom.id как уникальный идентификатор. 
-    // Если nom.id нет - используем комбинацию имени и категории (без Date.now(), чтобы одинаковые позиции суммировались)
-    const uniqueId = nom.id || `item_${name}_${category}`;
+    // Если nom.id нет - используем комбинацию имени и индекса из массива номенклатуры
+    const uniqueId = nom.id || `item_${name}_${nomIndex !== undefined ? nomIndex : 'unknown'}`;
     
-    console.log('Adding item:', { uniqueId, name, price, category, quantity });
+    console.log('Adding item:', { uniqueId, name, price, category, quantity, nomIndex });
     
     setItems(prevItems => {
       const existingItem = prevItems.find(i => i.nomenclatureId === uniqueId);
@@ -474,8 +474,8 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                   console.log(`Processing ${name}: qty=${qty}`);
                   
                   if (qty > 0) {
-                    console.log(`Adding ${name} with ID: ${nom.id}, qty: ${qty}`);
-                    addItem({...nom, name, currentPrice: price}, qty);
+                    console.log(`Adding ${name} with ID: ${nom.id}, index: ${index}, qty: ${qty}`);
+                    addItem({...nom, name, currentPrice: price}, qty, index);
                     input.value = '0';
                     addedCount++;
                   }
