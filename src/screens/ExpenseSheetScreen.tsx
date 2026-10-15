@@ -413,13 +413,7 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                 setShowNomenclaturePicker(false);
               }}
             >
-              Добавить выбранные
-            </button>
-            <button
-              className="w-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-4 rounded-lg mt-2 transition-colors"
-              onClick={() => setShowNomenclaturePicker(false)}
-            >
-              Закрыть
+              Сохранить и закрыть
             </button>
           </div>
         </div>
