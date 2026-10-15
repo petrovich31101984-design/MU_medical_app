@@ -214,7 +214,7 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
             + Добавить
           </button>
 
-          {items.map(item => (
+          {[...items].sort((a, b) => a.name.localeCompare(b.name, 'ru')).map(item => (
             <div key={item.nomenclatureId} className="bg-slate-50 p-3 rounded-lg mb-2 border border-slate-200">
               <div className="flex justify-between items-center">
                 <p className="text-sm text-slate-700 flex-1">{item.name}</p>
@@ -282,7 +282,23 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                   </button>
                 </div>
               ) : (
-                nomenclature.map((nom, index) => {
+                [...nomenclature].sort((a, b) => {
+                  const getName = (nom: any) => {
+                    if (nom.name && typeof nom.name === 'string' && nom.name.length > 0) return nom.name;
+                    if (nom.наименование && typeof nom.наименование === 'string') return nom.наименование;
+                    if (nom.Наименование && typeof nom.Наименование === 'string') return nom.Наименование;
+                    if (nom.productName && typeof nom.productName === 'string') return nom.productName;
+                    if (nom.title && typeof nom.title === 'string') return nom.title;
+                    for (const [key, value] of Object.entries(nom)) {
+                      if (key !== 'id' && key !== 'ID' && key !== 'Id' &&
+                          typeof value === 'string' && (value as string).length > 0 && !(value as string).startsWith('NOM-')) {
+                        return value as string;
+                      }
+                    }
+                    return '';
+                  };
+                  return getName(a).localeCompare(getName(b), 'ru');
+                }).map((nom, index) => {
                   const nomData = nom as any;
                   
                   // Логируем структуру первого элемента для отладки
