@@ -28,14 +28,14 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
     loadNomenclature();
   }, []);
 
-  const addItem = (nom: Nomenclature, quantity: number = 1) => {
+  const addItem = (nom: Nomenclature, quantity: number = 1, uniqueKey: string) => {
     const nomData = nom as any;
     const name = nomData.name || nomData.наименование || nomData.Наименование || nomData.productName || nomData.title || 'Препарат';
     const price = nomData.currentPrice || nomData.price || nomData.цена || nomData.Цена || 0;
     const category = nomData.category || nomData.категория || nomData.Категория || '';
     
-    // Используем nom.id как уникальный идентификатор
-    const uniqueId = nom.id;
+    // Используем уникальный ключ (имя + индекс) как идентификатор
+    const uniqueId = uniqueKey;
     
     console.log('Adding item:', { uniqueId, name, price, category, quantity });
     
@@ -393,11 +393,12 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                     name = `Препарат ${index + 1}`;
                   }
 
-                  const nomId = nom.id;
+                  // Создаём уникальный ключ на основе имени и индекса
+                  const uniqueKey = `${name}_${index}`;
 
                   return (
                     <div
-                      key={nomId}
+                      key={uniqueKey}
                       className="p-4 border-b border-slate-200 flex items-center gap-3"
                     >
                       <div className="flex-1 min-w-0">
@@ -406,12 +407,12 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                       <input
                         type="number"
                         min="0"
-                        value={quantities[nomId] || 0}
+                        value={quantities[uniqueKey] || 0}
                         onChange={(e) => {
                           const value = parseInt(e.target.value) || 0;
                           setQuantities(prev => ({
                             ...prev,
-                            [nomId]: value
+                            [uniqueKey]: value
                           }));
                         }}
                         className="w-20 border border-slate-200 rounded-lg p-2 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -430,37 +431,84 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                 
                 let addedCount = 0;
                 
-                nomenclature.forEach((nom) => {
-                  const nomId = nom.id;
-                  const qty = quantities[nomId] || 0;
-                  
-                  if (qty > 0) {
-                    const nomData = nom as any;
-                    let name = '';
-                    if (nomData.name && typeof nomData.name === 'string' && nomData.name.length > 0) {
-                      name = nomData.name;
-                    } else if (nomData.наименование && typeof nomData.наименование === 'string') {
-                      name = nomData.наименование;
-                    } else if (nomData.Наименование && typeof nomData.Наименование === 'string') {
-                      name = nomData.Наименование;
-                    } else if (nomData.productName && typeof nomData.productName === 'string') {
-                      name = nomData.productName;
-                    } else if (nomData.title && typeof nomData.title === 'string') {
-                      name = nomData.title;
-                    } else {
-                      for (const [key, value] of Object.entries(nomData)) {
-                        if (key !== 'id' && key !== 'ID' && key !== 'Id' &&
-                            typeof value === 'string' && value.length > 0 && !value.startsWith('NOM-')) {
-                          name = value;
-                          break;
-                        }
+                // Создаём отсортированный массив с уникальными ключами
+                const sortedNomenclature = [...nomenclature].sort((a, b) => {
+                  const russianAlphabet = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ';
+                  const getName = (nom: any) => {
+                    if (nom.name && typeof nom.name === 'string' && nom.name.length > 0) return nom.name;
+                    if (nom.наименование && typeof nom.наименование === 'string') return nom.наименование;
+                    if (nom.Наименование && typeof nom.Наименование === 'string') return nom.Наименование;
+                    if (nom.productName && typeof nom.productName === 'string') return nom.productName;
+                    if (nom.title && typeof nom.title === 'string') return nom.title;
+                    for (const [key, value] of Object.entries(nom)) {
+                      if (key !== 'id' && key !== 'ID' && key !== 'Id' &&
+                          typeof value === 'string' && (value as string).length > 0 && !(value as string).startsWith('NOM-')) {
+                        return value as string;
                       }
                     }
-                    
+                    return '';
+                  };
+
+                  const nameA = getName(a).toUpperCase();
+                  const nameB = getName(b).toUpperCase();
+
+                  for (let i = 0; i < Math.min(nameA.length, nameB.length); i++) {
+                    const charA = nameA[i];
+                    const charB = nameB[i];
+
+                    const indexA = russianAlphabet.indexOf(charA);
+                    const indexB = russianAlphabet.indexOf(charB);
+
+                    if (indexA !== -1 && indexB !== -1) {
+                      if (indexA !== indexB) {
+                        return indexA - indexB;
+                      }
+                    } else if (indexA !== -1) {
+                      return -1;
+                    } else if (indexB !== -1) {
+                      return 1;
+                    } else {
+                      if (charA !== charB) {
+                        return charA < charB ? -1 : 1;
+                      }
+                    }
+                  }
+
+                  return nameA.length - nameB.length;
+                });
+
+                sortedNomenclature.forEach((nom, index) => {
+                  const nomData = nom as any;
+                  let name = '';
+                  if (nomData.name && typeof nomData.name === 'string' && nomData.name.length > 0) {
+                    name = nomData.name;
+                  } else if (nomData.наименование && typeof nomData.наименование === 'string') {
+                    name = nomData.наименование;
+                  } else if (nomData.Наименование && typeof nomData.Наименование === 'string') {
+                    name = nomData.Наименование;
+                  } else if (nomData.productName && typeof nomData.productName === 'string') {
+                    name = nomData.productName;
+                  } else if (nomData.title && typeof nomData.title === 'string') {
+                    name = nomData.title;
+                  } else {
+                    for (const [key, value] of Object.entries(nomData)) {
+                      if (key !== 'id' && key !== 'ID' && key !== 'Id' &&
+                          typeof value === 'string' && value.length > 0 && !value.startsWith('NOM-')) {
+                        name = value;
+                        break;
+                      }
+                    }
+                  }
+                  
+                  // Создаём уникальный ключ на основе имени и индекса
+                  const uniqueKey = `${name}_${index}`;
+                  const qty = quantities[uniqueKey] || 0;
+                  
+                  if (qty > 0) {
                     const price = nomData.currentPrice || nomData.price || nomData.цена || nomData.Цена || 0;
                     
-                    console.log(`Adding ${name} with ID: ${nomId}, qty: ${qty}`);
-                    addItem({...nom, name, currentPrice: price}, qty);
+                    console.log(`Adding ${name} with uniqueKey: ${uniqueKey}, qty: ${qty}`);
+                    addItem({...nom, name, currentPrice: price}, qty, uniqueKey);
                     addedCount++;
                   }
                 });
