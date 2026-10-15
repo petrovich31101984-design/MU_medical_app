@@ -333,7 +333,7 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                       <input
                         type="number"
                         min="1"
-                        defaultValue="1"
+                        defaultValue="0"
                         className="w-20 border border-slate-200 rounded-lg p-2 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="Кол-во"
                         id={`qty-${nom.id || index}`}
@@ -342,8 +342,10 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                         className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
                         onClick={() => {
                           const input = document.getElementById(`qty-${nom.id || index}`) as HTMLInputElement;
-                          const qty = parseInt(input.value) || 1;
-                          addItem({...nom, name, currentPrice: price}, qty);
+                          const qty = parseInt(input.value) || 0;
+                          if (qty > 0) {
+                            addItem({...nom, name, currentPrice: price}, qty);
+                          }
                         }}
                       >
                         +
