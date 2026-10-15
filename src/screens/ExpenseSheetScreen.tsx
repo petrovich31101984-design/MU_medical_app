@@ -35,24 +35,26 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
     
     console.log('Adding item:', { name, price, category, quantity });
     
-    const existingItem = items.find(i => i.nomenclatureId === nom.id);
-    
-    if (existingItem) {
-      setItems(items.map(i => 
-        i.nomenclatureId === nom.id 
-          ? { ...i, quantity: i.quantity + quantity, total: (i.quantity + quantity) * i.pricePerUnit }
-          : i
-      ));
-    } else {
-      setItems([...items, {
-        nomenclatureId: nom.id,
-        name: name,
-        category: category,
-        quantity: quantity,
-        pricePerUnit: price,
-        total: price * quantity,
-      }]);
-    }
+    setItems(prevItems => {
+      const existingItem = prevItems.find(i => i.nomenclatureId === nom.id);
+      
+      if (existingItem) {
+        return prevItems.map(i => 
+          i.nomenclatureId === nom.id 
+            ? { ...i, quantity: i.quantity + quantity, total: (i.quantity + quantity) * i.pricePerUnit }
+            : i
+        );
+      } else {
+        return [...prevItems, {
+          nomenclatureId: nom.id,
+          name: name,
+          category: category,
+          quantity: quantity,
+          pricePerUnit: price,
+          total: price * quantity,
+        }];
+      }
+    });
   };
 
   const updateQuantity = (nomenclatureId: string, quantity: number) => {
@@ -302,23 +304,14 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                 nomenclature.map((nom, index) => {
                   const nomData = nom as any;
                   
-                  // Получаем название - исключаем ID и проверяем все строковые поля
-                  let name = '';
-                  const excludeFields = ['id', 'ID', 'Id'];
-                  
-                  for (const [key, value] of Object.entries(nomData)) {
-                    if (!excludeFields.includes(key) && 
-                        typeof value === 'string' && 
-                        value.length > 0 && 
-                        !value.startsWith('NOM-')) {
-                      name = value;
-                      break;
-                    }
-                  }
-                  
-                  if (!name) {
-                    name = nomData.name || nomData.id || `Препарат ${index + 1}`;
-                  }
+                  // Фиксированная логика получения названия - всегда проверяем поля в одном порядке
+                  const name = nomData.name || 
+                               nomData.наименование || 
+                               nomData.Наименование || 
+                               nomData.productName || 
+                               nomData.title || 
+                               nomData.id || 
+                               `Препарат ${index + 1}`;
                   
                   const price = nomData.currentPrice || nomData.price || nomData.цена || nomData.Цена || 0;
                   
@@ -327,59 +320,52 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                       key={nom.id || index}
                       className="p-4 border-b border-slate-200 flex items-center gap-3"
                     >
-                      <div className="flex-1">
-                        <span className="text-base text-slate-800 font-medium">{name}</span>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-base text-slate-800 font-medium block truncate">{name}</span>
                       </div>
-                      <button
-                        className="bg-red-600 hover:bg-red-700 text-white font-bold w-8 h-8 rounded-lg transition-colors flex items-center justify-center"
-                        onClick={() => {
-                          const input = document.getElementById(`qty-${nom.id || index}`) as HTMLInputElement;
-                          const currentVal = parseInt(input.value) || 0;
-                          if (currentVal > 0) {
-                            input.value = String(currentVal - 1);
-                          }
-                        }}
-                      >
-                        -
-                      </button>
                       <input
                         type="number"
                         min="0"
                         defaultValue="0"
-                        className="w-16 border border-slate-200 rounded-lg p-2 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-20 border border-slate-200 rounded-lg p-2 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="0"
                         id={`qty-${nom.id || index}`}
                       />
-                      <button
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold w-8 h-8 rounded-lg transition-colors flex items-center justify-center"
-                        onClick={() => {
-                          const input = document.getElementById(`qty-${nom.id || index}`) as HTMLInputElement;
-                          const currentVal = parseInt(input.value) || 0;
-                          input.value = String(currentVal + 1);
-                        }}
-                      >
-                        +
-                      </button>
-                      <button
-                        className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-lg transition-colors ml-2"
-                        onClick={() => {
-                          const input = document.getElementById(`qty-${nom.id || index}`) as HTMLInputElement;
-                          const qty = parseInt(input.value) || 0;
-                          if (qty > 0) {
-                            addItem({...nom, name, currentPrice: price}, qty);
-                            input.value = '0';
-                          }
-                        }}
-                      >
-                        ✓
-                      </button>
                     </div>
                   );
                 })
               )}
             </div>
             <button
-              className="w-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-4 rounded-lg mt-4 transition-colors"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-lg mt-4 transition-colors"
+              onClick={() => {
+                // Добавляем все препараты с количеством > 0
+                nomenclature.forEach((nom, index) => {
+                  const nomData = nom as any;
+                  const name = nomData.name || 
+                               nomData.наименование || 
+                               nomData.Наименование || 
+                               nomData.productName || 
+                               nomData.title || 
+                               nomData.id || 
+                               `Препарат ${index + 1}`;
+                  const price = nomData.currentPrice || nomData.price || nomData.цена || nomData.Цена || 0;
+                  
+                  const input = document.getElementById(`qty-${nom.id || index}`) as HTMLInputElement;
+                  const qty = parseInt(input.value) || 0;
+                  
+                  if (qty > 0) {
+                    addItem({...nom, name, currentPrice: price}, qty);
+                    input.value = '0';
+                  }
+                });
+                setShowNomenclaturePicker(false);
+              }}
+            >
+              Добавить выбранные
+            </button>
+            <button
+              className="w-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-4 rounded-lg mt-2 transition-colors"
               onClick={() => setShowNomenclaturePicker(false)}
             >
               Закрыть
