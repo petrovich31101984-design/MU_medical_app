@@ -21,23 +21,23 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
   const [showNomenclaturePicker, setShowNomenclaturePicker] = useState(false);
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
 
   useEffect(() => {
     console.log('=== EXPENSE SHEET SCREEN MOUNTED ===');
     loadNomenclature();
   }, []);
 
-  const addItem = (nom: Nomenclature, quantity: number = 1, nomIndex?: number) => {
+  const addItem = (nom: Nomenclature, quantity: number = 1) => {
     const nomData = nom as any;
     const name = nomData.name || nomData.наименование || nomData.Наименование || nomData.productName || nomData.title || 'Препарат';
     const price = nomData.currentPrice || nomData.price || nomData.цена || nomData.Цена || 0;
     const category = nomData.category || nomData.категория || nomData.Категория || '';
     
-    // Используем nom.id как уникальный идентификатор. 
-    // Если nom.id нет - используем комбинацию имени и индекса из массива номенклатуры
-    const uniqueId = nom.id || `item_${name}_${nomIndex !== undefined ? nomIndex : 'unknown'}`;
+    // Используем nom.id как уникальный идентификатор
+    const uniqueId = nom.id;
     
-    console.log('Adding item:', { uniqueId, name, price, category, quantity, nomIndex });
+    console.log('Adding item:', { uniqueId, name, price, category, quantity });
     
     setItems(prevItems => {
       const existingItem = prevItems.find(i => i.nomenclatureId === uniqueId);
@@ -328,49 +328,43 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                     }
                     return '';
                   };
-                  
+
                   const nameA = getName(a).toUpperCase();
                   const nameB = getName(b).toUpperCase();
-                  
+
                   for (let i = 0; i < Math.min(nameA.length, nameB.length); i++) {
                     const charA = nameA[i];
                     const charB = nameB[i];
-                    
+
                     const indexA = russianAlphabet.indexOf(charA);
                     const indexB = russianAlphabet.indexOf(charB);
-                    
-                    // Если оба символа в русском алфавите
+
                     if (indexA !== -1 && indexB !== -1) {
                       if (indexA !== indexB) {
                         return indexA - indexB;
                       }
                     } else if (indexA !== -1) {
-                      return -1; // Русские буквы перед другими
+                      return -1;
                     } else if (indexB !== -1) {
                       return 1;
                     } else {
-                      // Оба символа не в русском алфавите, сравниваем обычно
                       if (charA !== charB) {
                         return charA < charB ? -1 : 1;
                       }
                     }
                   }
-                  
+
                   return nameA.length - nameB.length;
                 }).map((nom, index) => {
                   const nomData = nom as any;
-                  
-                  // Логируем структуру первого элемента для отладки
+
                   if (index === 0) {
                     console.log('=== NOMENCLATURE STRUCTURE ===');
                     console.log('First item:', nomData);
                     console.log('All keys:', Object.keys(nomData));
                   }
-                  
-                  // Улучшенная логика получения названия
+
                   let name = '';
-                  
-                  // Сначала проверяем стандартные поля
                   if (nomData.name && typeof nomData.name === 'string' && nomData.name.length > 0) {
                     name = nomData.name;
                   } else if (nomData.наименование && typeof nomData.наименование === 'string') {
@@ -382,30 +376,28 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                   } else if (nomData.title && typeof nomData.title === 'string') {
                     name = nomData.title;
                   } else {
-                    // Если не нашли в стандартных полях, ищем первое строковое поле, не являющееся ID
                     for (const [key, value] of Object.entries(nomData)) {
-                      if (key !== 'id' && 
-                          key !== 'ID' && 
+                      if (key !== 'id' &&
+                          key !== 'ID' &&
                           key !== 'Id' &&
-                          typeof value === 'string' && 
-                          value.length > 0 && 
+                          typeof value === 'string' &&
+                          value.length > 0 &&
                           !value.startsWith('NOM-')) {
                         name = value;
                         break;
                       }
                     }
                   }
-                  
-                  // Если всё равно не нашли, используем fallback
+
                   if (!name) {
                     name = `Препарат ${index + 1}`;
                   }
-                  
-                  const price = nomData.currentPrice || nomData.price || nomData.цена || nomData.Цена || 0;
-                  
+
+                  const nomId = nom.id;
+
                   return (
                     <div
-                      key={nom.id || index}
+                      key={nomId}
                       className="p-4 border-b border-slate-200 flex items-center gap-3"
                     >
                       <div className="flex-1 min-w-0">
@@ -414,10 +406,16 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                       <input
                         type="number"
                         min="0"
-                        defaultValue="0"
+                        value={quantities[nomId] || 0}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value) || 0;
+                          setQuantities(prev => ({
+                            ...prev,
+                            [nomId]: value
+                          }));
+                        }}
                         className="w-20 border border-slate-200 rounded-lg p-2 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="0"
-                        id={`qty-${nom.id || index}`}
                       />
                     </div>
                   );
@@ -428,60 +426,47 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-lg mt-4 transition-colors"
               onClick={() => {
                 console.log('=== SAVE BUTTON CLICKED ===');
-                console.log('Total nomenclature items:', nomenclature.length);
+                console.log('Quantities state:', quantities);
                 
-                // Добавляем все препараты с количеством > 0
                 let addedCount = 0;
-                nomenclature.forEach((nom, index) => {
-                  const nomData = nom as any;
-                  
-                  // Та же логика получения названия
-                  let name = '';
-                  if (nomData.name && typeof nomData.name === 'string' && nomData.name.length > 0) {
-                    name = nomData.name;
-                  } else if (nomData.наименование && typeof nomData.наименование === 'string') {
-                    name = nomData.наименование;
-                  } else if (nomData.Наименование && typeof nomData.Наименование === 'string') {
-                    name = nomData.Наименование;
-                  } else if (nomData.productName && typeof nomData.productName === 'string') {
-                    name = nomData.productName;
-                  } else if (nomData.title && typeof nomData.title === 'string') {
-                    name = nomData.title;
-                  } else {
-                    for (const [key, value] of Object.entries(nomData)) {
-                      if (key !== 'id' && key !== 'ID' && key !== 'Id' &&
-                          typeof value === 'string' && value.length > 0 && !value.startsWith('NOM-')) {
-                        name = value;
-                        break;
-                      }
-                    }
-                  }
-                  if (!name) {
-                    name = `Препарат ${index + 1}`;
-                  }
-                  
-                  const price = nomData.currentPrice || nomData.price || nomData.цена || nomData.Цена || 0;
-                  
-                  const inputId = `qty-${nom.id || index}`;
-                  const input = document.getElementById(inputId) as HTMLInputElement;
-                  
-                  if (!input) {
-                    console.error(`Input not found for ${name} (id: ${inputId})`);
-                    return;
-                  }
-                  
-                  const qty = parseInt(input.value) || 0;
-                  console.log(`Processing ${name}: qty=${qty}`);
+                
+                nomenclature.forEach((nom) => {
+                  const nomId = nom.id;
+                  const qty = quantities[nomId] || 0;
                   
                   if (qty > 0) {
-                    console.log(`Adding ${name} with ID: ${nom.id}, index: ${index}, qty: ${qty}`);
-                    addItem({...nom, name, currentPrice: price}, qty, index);
-                    input.value = '0';
+                    const nomData = nom as any;
+                    let name = '';
+                    if (nomData.name && typeof nomData.name === 'string' && nomData.name.length > 0) {
+                      name = nomData.name;
+                    } else if (nomData.наименование && typeof nomData.наименование === 'string') {
+                      name = nomData.наименование;
+                    } else if (nomData.Наименование && typeof nomData.Наименование === 'string') {
+                      name = nomData.Наименование;
+                    } else if (nomData.productName && typeof nomData.productName === 'string') {
+                      name = nomData.productName;
+                    } else if (nomData.title && typeof nomData.title === 'string') {
+                      name = nomData.title;
+                    } else {
+                      for (const [key, value] of Object.entries(nomData)) {
+                        if (key !== 'id' && key !== 'ID' && key !== 'Id' &&
+                            typeof value === 'string' && value.length > 0 && !value.startsWith('NOM-')) {
+                          name = value;
+                          break;
+                        }
+                      }
+                    }
+                    
+                    const price = nomData.currentPrice || nomData.price || nomData.цена || nomData.Цена || 0;
+                    
+                    console.log(`Adding ${name} with ID: ${nomId}, qty: ${qty}`);
+                    addItem({...nom, name, currentPrice: price}, qty);
                     addedCount++;
                   }
                 });
                 
                 console.log(`Total items added: ${addedCount}`);
+                setQuantities({});
                 setShowNomenclaturePicker(false);
               }}
             >
@@ -489,7 +474,6 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
             </button>
           </div>
         </div>
-      )}
-    </div>
+      )}    </div>
   );
 }
