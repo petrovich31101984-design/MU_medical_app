@@ -203,7 +203,7 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-lg mb-4 transition-colors"
             onClick={() => setShowNomenclaturePicker(true)}
           >
-            + Добавить препарат
+            + Добавить
           </button>
 
           {items.map(item => (
