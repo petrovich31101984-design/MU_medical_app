@@ -213,11 +213,9 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
             <div key={item.nomenclatureId} className="bg-slate-50 p-3 rounded-lg mb-2 border border-slate-200">
               <div className="flex justify-between items-center">
                 <p className="text-sm text-slate-700 flex-1">{item.name}</p>
-                {item.category && (
-                  <span className="text-xs text-slate-500 bg-slate-200 px-2 py-1 rounded ml-2">
-                    {item.category}
-                  </span>
-                )}
+                <span className="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded ml-2">
+                  {item.quantity} шт.
+                </span>
               </div>
             </div>
           ))}
