@@ -33,8 +33,9 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
     const price = nomData.currentPrice || nomData.price || nomData.цена || nomData.Цена || 0;
     const category = nomData.category || nomData.категория || nomData.Категория || '';
     
-    // Используем уникальный ID: если nom.id есть, используем его, иначе генерируем на основе имени
-    const uniqueId = nom.id || `item_${name}_${category}_${Date.now()}`;
+    // Используем nom.id как уникальный идентификатор. 
+    // Если nom.id нет - используем комбинацию имени и категории (без Date.now(), чтобы одинаковые позиции суммировались)
+    const uniqueId = nom.id || `item_${name}_${category}`;
     
     console.log('Adding item:', { uniqueId, name, price, category, quantity });
     
@@ -42,12 +43,16 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
       const existingItem = prevItems.find(i => i.nomenclatureId === uniqueId);
       
       if (existingItem) {
+        // Если позиция уже есть - суммируем количество
+        console.log(`Position "${name}" already exists, summing quantities: ${existingItem.quantity} + ${quantity}`);
         return prevItems.map(i => 
           i.nomenclatureId === uniqueId 
             ? { ...i, quantity: i.quantity + quantity, total: (i.quantity + quantity) * i.pricePerUnit }
             : i
         );
       } else {
+        // Если позиции нет - добавляем новую
+        console.log(`Adding new position "${name}" with quantity ${quantity}`);
         return [...prevItems, {
           nomenclatureId: uniqueId,
           name: name,
