@@ -225,14 +225,7 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
             </div>
           ))}
 
-          {items.length > 0 && (
-            <div className="flex justify-between items-center p-4 bg-slate-100 rounded-lg mt-2">
-              <span className="text-lg font-bold text-slate-800">Всего позиций:</span>
-              <span className="text-2xl font-bold text-blue-600">
-                {items.length}
-              </span>
-            </div>
-          )}
+
         </div>
 
         {error && (
