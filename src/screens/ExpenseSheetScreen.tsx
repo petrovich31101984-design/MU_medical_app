@@ -210,9 +210,11 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
             <div key={item.nomenclatureId} className="bg-slate-50 p-4 rounded-lg mb-3 border border-slate-200">
               <div className="flex justify-between items-start mb-3">
                 <p className="text-base font-bold text-slate-800 flex-1">{item.name}</p>
-                <span className="text-xs text-slate-500 bg-slate-200 px-2 py-1 rounded">
-                  {item.category}
-                </span>
+                {item.category && (
+                  <span className="text-xs text-slate-500 bg-slate-200 px-2 py-1 rounded">
+                    {item.category}
+                  </span>
+                )}
               </div>
               <div className="flex items-center">
                 <button
@@ -230,8 +232,8 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                 >
                   +
                 </button>
-                <span className="text-base font-bold text-green-600 ml-auto">
-                  {(item.total || 0).toLocaleString('ru-RU')} ₽
+                <span className="text-base font-bold text-blue-600 ml-auto">
+                  шт.
                 </span>
               </div>
             </div>
@@ -239,9 +241,9 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
 
           {items.length > 0 && (
             <div className="flex justify-between items-center p-4 bg-slate-100 rounded-lg mt-2">
-              <span className="text-lg font-bold text-slate-800">Итого:</span>
-              <span className="text-2xl font-bold text-green-600">
-                {(totalAmount || 0).toLocaleString('ru-RU')} ₽
+              <span className="text-lg font-bold text-slate-800">Всего позиций:</span>
+              <span className="text-2xl font-bold text-blue-600">
+                {items.length}
               </span>
             </div>
           )}
