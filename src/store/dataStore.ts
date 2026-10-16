@@ -91,17 +91,29 @@ export const useDataStore = create<DataStore>((set, get) => ({
     console.log('=== DATA STORE: Sending message ===');
     console.log('Message:', message);
     
+    // Оптимистичное обновление - добавляем сообщение сразу в локальное состояние
+    const newMessage: ChatMessage = {
+      ...message,
+      id: `temp_${Date.now()}`,
+      date: new Date().toISOString(),
+    };
+    
+    console.log('Adding message to local state immediately');
+    set(state => ({
+      messages: [...state.messages, newMessage]
+    }));
+    
     const response = await api.sendMessage(message);
     console.log('API response:', response);
     
     if (response.success) {
-      console.log('Message sent successfully, waiting 1 second before reloading...');
-      // Даём серверу время обработать запрос
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      console.log('Reloading messages...');
-      await get().loadMessages(message.fromId);
-      console.log('Messages reloaded, current count:', get().messages.length);
+      console.log('Message sent successfully to server');
+      // Перезагружаем сообщения через 1 секунду для синхронизации с сервером
+      setTimeout(async () => {
+        console.log('Reloading messages from server...');
+        await get().loadMessages(message.fromId);
+        console.log('Messages reloaded, current count:', get().messages.length);
+      }, 1000);
       return true;
     } else {
       console.error('Failed to send message:', response.error);
