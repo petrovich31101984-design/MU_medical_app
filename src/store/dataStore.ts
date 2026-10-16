@@ -53,7 +53,15 @@ export const useDataStore = create<DataStore>((set, get) => ({
     set({ loading: true });
     const response = await api.getEmployeeMessages(employeeId);
     if (response.success && response.data) {
-      set({ messages: response.data, loading: false });
+      // Фильтруем временные сообщения (с ID начинающимся на 'temp_')
+      const serverMessages = response.data;
+      set(state => {
+        // Сохраняем временные сообщения из локального состояния
+        const tempMessages = state.messages.filter(msg => msg.id.startsWith('temp_'));
+        // Объединяем серверные сообщения с временными
+        const allMessages = [...serverMessages, ...tempMessages];
+        return { messages: allMessages, loading: false };
+      });
     } else {
       set({ loading: false });
     }
@@ -108,12 +116,8 @@ export const useDataStore = create<DataStore>((set, get) => ({
     
     if (response.success) {
       console.log('Message sent successfully to server');
-      // Перезагружаем сообщения через 1 секунду для синхронизации с сервером
-      setTimeout(async () => {
-        console.log('Reloading messages from server...');
-        await get().loadMessages(message.fromId);
-        console.log('Messages reloaded, current count:', get().messages.length);
-      }, 1000);
+      // НЕ перезагружаем сообщения с сервера, чтобы не удалять локальное сообщение
+      // Сервер обработает сообщение в фоне
       return true;
     } else {
       console.error('Failed to send message:', response.error);
