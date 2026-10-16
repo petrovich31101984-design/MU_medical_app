@@ -15,6 +15,8 @@ interface DataStore {
   loadAnnouncements: () => Promise<void>;
   createExpenseSheet: (sheet: Omit<ExpenseSheet, 'id'>) => Promise<boolean>;
   sendMessage: (message: Omit<ChatMessage, 'id' | 'date'>) => Promise<boolean>;
+  editMessage: (messageId: string, newText: string) => Promise<boolean>;
+  deleteMessage: (messageId: string) => Promise<boolean>;
 }
 
 export const useDataStore = create<DataStore>((set, get) => ({
@@ -123,5 +125,38 @@ export const useDataStore = create<DataStore>((set, get) => ({
       console.error('Failed to send message:', response.error);
       return false;
     }
+  },
+
+  editMessage: async (messageId: string, newText: string) => {
+    console.log('=== DATA STORE: Editing message ===');
+    console.log('Message ID:', messageId);
+    console.log('New text:', newText);
+    
+    // Оптимистичное обновление
+    set(state => ({
+      messages: state.messages.map(msg => 
+        msg.id === messageId ? { ...msg, text: newText } : msg
+      )
+    }));
+    
+    const response = await api.editMessage(messageId, newText);
+    console.log('API response:', response);
+    
+    return response.success;
+  },
+
+  deleteMessage: async (messageId: string) => {
+    console.log('=== DATA STORE: Deleting message ===');
+    console.log('Message ID:', messageId);
+    
+    // Оптимистичное удаление
+    set(state => ({
+      messages: state.messages.filter(msg => msg.id !== messageId)
+    }));
+    
+    const response = await api.deleteMessage(messageId);
+    console.log('API response:', response);
+    
+    return response.success;
   },
 }));

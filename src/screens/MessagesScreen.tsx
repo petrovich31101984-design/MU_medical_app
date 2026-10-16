@@ -9,9 +9,11 @@ interface MessagesScreenProps {
 
 export default function MessagesScreen({ onBack }: MessagesScreenProps) {
   const { employee } = useAuthStore();
-  const { messages, loadMessages, sendMessage } = useDataStore();
+  const { messages, loadMessages, sendMessage, editMessage, deleteMessage } = useDataStore();
   const [newMessage, setNewMessage] = useState('');
   const [selectedRecipient, setSelectedRecipient] = useState<'MGR' | 'STORE'>('MGR');
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const recipients = {
@@ -62,6 +64,32 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+    }
+  };
+
+  const handleEdit = (message: ChatMessage) => {
+    setEditingMessageId(message.id);
+    setEditingText(message.text);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingMessageId || !editingText.trim()) return;
+    
+    const success = await editMessage(editingMessageId, editingText);
+    if (success) {
+      setEditingMessageId(null);
+      setEditingText('');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMessageId(null);
+    setEditingText('');
+  };
+
+  const handleDelete = async (messageId: string) => {
+    if (confirm('Вы уверены, что хотите удалить сообщение?')) {
+      await deleteMessage(messageId);
     }
   };
 
@@ -124,30 +152,78 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
         ) : (
           sortedMessages.map((item: ChatMessage) => {
             const isOwn = item.fromId === employee?.id;
+            const isEditing = editingMessageId === item.id;
+            
             return (
               <div
                 key={item.id}
                 className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
               >
-                <div
-                  className={`max-w-[80%] p-3 rounded-xl ${
-                    isOwn
-                      ? 'bg-blue-600 rounded-br-sm'
-                      : 'bg-white border border-slate-200 rounded-bl-sm'
-                  }`}
-                >
-                  <p className={`text-base ${isOwn ? 'text-white' : 'text-slate-800'}`}>
-                    {item.text}
-                  </p>
-                  <p className={`text-xs mt-1 ${isOwn ? 'text-blue-200' : 'text-slate-400'}`}>
-                    {new Date(item.date).toLocaleString('ru-RU', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </p>
+                <div className="max-w-[80%]">
+                  {isEditing ? (
+                    <div className="bg-white border border-blue-500 rounded-xl p-3">
+                      <textarea
+                        className="w-full p-2 border border-slate-200 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                        value={editingText}
+                        onChange={(e) => setEditingText(e.target.value)}
+                        rows={3}
+                        autoFocus
+                      />
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 rounded-lg transition-colors"
+                          onClick={handleSaveEdit}
+                        >
+                          Сохранить
+                        </button>
+                        <button
+                          className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-800 text-sm font-medium py-2 rounded-lg transition-colors"
+                          onClick={handleCancelEdit}
+                        >
+                          Отмена
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div
+                        className={`p-3 rounded-xl ${
+                          isOwn
+                            ? 'bg-blue-600 rounded-br-sm'
+                            : 'bg-white border border-slate-200 rounded-bl-sm'
+                        }`}
+                      >
+                        <p className={`text-base ${isOwn ? 'text-white' : 'text-slate-800'}`}>
+                          {item.text}
+                        </p>
+                        <p className={`text-xs mt-1 ${isOwn ? 'text-blue-200' : 'text-slate-400'}`}>
+                          {new Date(item.date).toLocaleString('ru-RU', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </p>
+                      </div>
+                      {isOwn && (
+                        <div className="flex gap-1 mt-1 justify-end">
+                          <button
+                            className="text-xs text-slate-500 hover:text-blue-600 px-2 py-1 rounded transition-colors"
+                            onClick={() => handleEdit(item)}
+                          >
+                            ✏️ Редактировать
+                          </button>
+                          <button
+                            className="text-xs text-slate-500 hover:text-red-600 px-2 py-1 rounded transition-colors"
+                            onClick={() => handleDelete(item.id)}
+                          >
+                            🗑️ Удалить
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             );

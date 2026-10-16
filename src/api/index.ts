@@ -80,41 +80,9 @@ class ApiService {
 
   async getNomenclature(): Promise<ApiResponse<Nomenclature[]>> {
     try {
-      console.log('=== GET NOMENCLATURE REQUEST ===');
-      console.log('URL:', `${this.scriptUrl}?action=getNomenclature`);
-      
       const response = await this.client.get(`${this.scriptUrl}?action=getNomenclature`);
-      
-      console.log('=== GET NOMENCLATURE RESPONSE ===');
-      console.log('Status:', response.status);
-      console.log('Data:', response.data);
-      console.log('Data type:', typeof response.data);
-      console.log('Is array:', Array.isArray(response.data));
-      
-      let data = response.data;
-      
-      // Если Apps Script вернул объект с полем data внутри
-      if (data && data.data && Array.isArray(data.data)) {
-        console.log('Extracting data from nested object');
-        data = data.data;
-      }
-      
-      // Если Apps Script вернул массив
-      if (Array.isArray(data)) {
-        console.log('Nomenclature count:', data.length);
-        if (data.length > 0) {
-          console.log('First item structure:', data[0]);
-          console.log('First item keys:', Object.keys(data[0]));
-        }
-        return { success: true, data };
-      }
-      
-      console.warn('Unexpected data format:', data);
-      return { success: false, error: 'Неверный формат данных номенклатуры' };
-    } catch (error: any) {
-      console.error('=== GET NOMENCLATURE ERROR ===');
-      console.error('Error:', error);
-      console.error('Error message:', error.message);
+      return { success: true, data: response.data };
+    } catch (error) {
       return { success: false, error: 'Ошибка загрузки номенклатуры' };
     }
   }
@@ -178,7 +146,7 @@ class ApiService {
       
       const requestBody = {
         action: 'addChatMessage',
-         message,
+        data: message,
       };
       
       console.log('Request body:', JSON.stringify(requestBody, null, 2));
@@ -201,6 +169,67 @@ class ApiService {
     }
   }
 
+  async editMessage(messageId: string, newText: string): Promise<ApiResponse<void>> {
+    try {
+      console.log('=== EDIT MESSAGE REQUEST ===');
+      console.log('Message ID:', messageId);
+      console.log('New text:', newText);
+      
+      const requestBody = {
+        action: 'editChatMessage',
+        data: { id: messageId, text: newText },
+      };
+      
+      console.log('Request body:', JSON.stringify(requestBody, null, 2));
+      
+      await fetch(this.scriptUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+      
+      console.log('=== EDIT MESSAGE - Request sent (no-cors mode) ===');
+      return { success: true };
+    } catch (error: any) {
+      console.error('=== EDIT MESSAGE ERROR ===');
+      console.error('Error:', error);
+      return { success: false, error: 'Ошибка редактирования сообщения' };
+    }
+  }
+
+  async deleteMessage(messageId: string): Promise<ApiResponse<void>> {
+    try {
+      console.log('=== DELETE MESSAGE REQUEST ===');
+      console.log('Message ID:', messageId);
+      
+      const requestBody = {
+        action: 'deleteChatMessage',
+        data: { id: messageId },
+      };
+      
+      console.log('Request body:', JSON.stringify(requestBody, null, 2));
+      
+      await fetch(this.scriptUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+      
+      console.log('=== DELETE MESSAGE - Request sent (no-cors mode) ===');
+      return { success: true };
+    } catch (error: any) {
+      console.error('=== DELETE MESSAGE ERROR ===');
+      console.error('Error:', error);
+      return { success: false, error: 'Ошибка удаления сообщения' };
+    }
+  }
+
   async getAnnouncements(): Promise<ApiResponse<Announcement[]>> {
     try {
       const response = await this.client.get(`${this.scriptUrl}?action=getAnnouncements`);
@@ -210,14 +239,12 @@ class ApiService {
     }
   }
 
-  // Открытие смены - используем fetch с no-cors для обхода CORS
   async openShift(employeeId: string): Promise<ApiResponse<void>> {
     try {
       console.log('=== OPEN SHIFT REQUEST ===');
       console.log('Employee ID:', employeeId);
-      console.log('URL:', this.scriptUrl);
       
-      await fetch(this.scriptUrl, {
+      const response = await fetch(this.scriptUrl, {
         method: 'POST',
         mode: 'no-cors',
         headers: {
@@ -229,7 +256,9 @@ class ApiService {
         }),
       });
       
-      console.log('=== OPEN SHIFT - Request sent (no-cors mode) ===');
+      console.log('=== OPEN SHIFT RESPONSE ===');
+      console.log('Type:', response.type);
+      
       return { success: true };
     } catch (error: any) {
       console.error('=== OPEN SHIFT ERROR ===');
@@ -238,14 +267,12 @@ class ApiService {
     }
   }
 
-  // Закрытие смены - используем fetch с no-cors для обхода CORS
   async closeShift(employeeId: string): Promise<ApiResponse<void>> {
     try {
       console.log('=== CLOSE SHIFT REQUEST ===');
       console.log('Employee ID:', employeeId);
-      console.log('URL:', this.scriptUrl);
       
-      await fetch(this.scriptUrl, {
+      const response = await fetch(this.scriptUrl, {
         method: 'POST',
         mode: 'no-cors',
         headers: {
@@ -257,7 +284,9 @@ class ApiService {
         }),
       });
       
-      console.log('=== CLOSE SHIFT - Request sent (no-cors mode) ===');
+      console.log('=== CLOSE SHIFT RESPONSE ===');
+      console.log('Type:', response.type);
+      
       return { success: true };
     } catch (error: any) {
       console.error('=== CLOSE SHIFT ERROR ===');
