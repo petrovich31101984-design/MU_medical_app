@@ -170,7 +170,18 @@ class ApiService {
   async sendMessage(message: Omit<ChatMessage, 'id' | 'date'>): Promise<ApiResponse<ChatMessage>> {
     try {
       console.log('=== SEND MESSAGE REQUEST ===');
-      console.log('Message:', message);
+      console.log('Full message object:', JSON.stringify(message, null, 2));
+      console.log('toId:', message.toId);
+      console.log('toName:', message.toName);
+      console.log('fromId:', message.fromId);
+      console.log('fromName:', message.fromName);
+      
+      const requestBody = {
+        action: 'addChatMessage',
+         message,
+      };
+      
+      console.log('Request body:', JSON.stringify(requestBody, null, 2));
       
       await fetch(this.scriptUrl, {
         method: 'POST',
@@ -178,10 +189,7 @@ class ApiService {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          action: 'addChatMessage',
-           message,
-        }),
+        body: JSON.stringify(requestBody),
       });
       
       console.log('=== SEND MESSAGE - Request sent (no-cors mode) ===');
