@@ -88,11 +88,24 @@ export const useDataStore = create<DataStore>((set, get) => ({
   },
 
   sendMessage: async (message) => {
+    console.log('=== DATA STORE: Sending message ===');
+    console.log('Message:', message);
+    
     const response = await api.sendMessage(message);
+    console.log('API response:', response);
+    
     if (response.success) {
+      console.log('Message sent successfully, waiting 1 second before reloading...');
+      // Даём серверу время обработать запрос
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      console.log('Reloading messages...');
       await get().loadMessages(message.fromId);
+      console.log('Messages reloaded, current count:', get().messages.length);
       return true;
+    } else {
+      console.error('Failed to send message:', response.error);
+      return false;
     }
-    return false;
   },
 }));

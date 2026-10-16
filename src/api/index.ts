@@ -169,12 +169,26 @@ class ApiService {
 
   async sendMessage(message: Omit<ChatMessage, 'id' | 'date'>): Promise<ApiResponse<ChatMessage>> {
     try {
-      const messageJson = encodeURIComponent(JSON.stringify(message));
-      const response = await this.client.get(
-        `${this.scriptUrl}?action=addChatMessage&data=${messageJson}`
-      );
-      return { success: true, data: response.data };
-    } catch (error) {
+      console.log('=== SEND MESSAGE REQUEST ===');
+      console.log('Message:', message);
+      
+      await fetch(this.scriptUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'addChatMessage',
+           message,
+        }),
+      });
+      
+      console.log('=== SEND MESSAGE - Request sent (no-cors mode) ===');
+      return { success: true };
+    } catch (error: any) {
+      console.error('=== SEND MESSAGE ERROR ===');
+      console.error('Error:', error);
       return { success: false, error: 'Ошибка отправки сообщения' };
     }
   }
