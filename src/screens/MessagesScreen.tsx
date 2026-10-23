@@ -14,6 +14,8 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
   const [selectedRecipient, setSelectedRecipient] = useState<'MGR' | 'STORE'>('MGR');
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
+  const [contextMenuMessageId, setContextMenuMessageId] = useState<string | null>(null);
+  const longPressTimerRef = useRef<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const recipients = {
@@ -90,6 +92,32 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
   const handleDelete = async (messageId: string) => {
     if (confirm('Вы уверены, что хотите удалить сообщение?')) {
       await deleteMessage(messageId);
+      setContextMenuMessageId(null);
+    }
+  };
+
+  const handleLongPressStart = (messageId: string) => {
+    longPressTimerRef.current = window.setTimeout(() => {
+      setContextMenuMessageId(messageId);
+    }, 500); // 500ms для long press
+  };
+
+  const handleLongPressEnd = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handleContextMenuAction = (action: 'edit' | 'delete', messageId: string) => {
+    setContextMenuMessageId(null);
+    if (action === 'edit') {
+      const message = messages.find(m => m.id === messageId);
+      if (message) {
+        handleEdit(message);
+      }
+    } else if (action === 'delete') {
+      handleDelete(messageId);
     }
   };
 
@@ -185,46 +213,31 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
                       </div>
                     </div>
                   ) : (
-                    <>
-                      <div
-                        className={`p-3 rounded-xl ${
-                          isOwn
-                            ? 'bg-blue-600 rounded-br-sm'
-                            : 'bg-white border border-slate-200 rounded-bl-sm'
-                        }`}
-                      >
-                        <p className={`text-base ${isOwn ? 'text-white' : 'text-slate-800'}`}>
-                          {item.text}
-                        </p>
-                        <p className={`text-xs mt-1 ${isOwn ? 'text-blue-200' : 'text-slate-400'}`}>
-                          {new Date(item.date).toLocaleString('ru-RU', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: '2-digit',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </p>
-                      </div>
-                      {isOwn && (
-                        <div className="flex gap-1 mt-1 justify-end">
-                          <button
-                            className="text-lg hover:scale-110 transition-transform"
-                            onClick={() => handleEdit(item)}
-                            title="Редактировать"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            className="text-lg hover:scale-110 transition-transform"
-                            onClick={() => handleDelete(item.id)}
-                            title="Удалить"
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      )}
-                    </>
+                    <div
+                      className={`p-3 rounded-xl cursor-pointer select-none ${
+                        isOwn
+                          ? 'bg-blue-600 rounded-br-sm'
+                          : 'bg-white border border-slate-200 rounded-bl-sm'
+                      } ${contextMenuMessageId === item.id ? 'ring-2 ring-blue-400' : ''}`}
+                      onMouseDown={() => isOwn && handleLongPressStart(item.id)}
+                      onMouseUp={handleLongPressEnd}
+                      onMouseLeave={handleLongPressEnd}
+                      onTouchStart={() => isOwn && handleLongPressStart(item.id)}
+                      onTouchEnd={handleLongPressEnd}
+                    >
+                      <p className={`text-base ${isOwn ? 'text-white' : 'text-slate-800'}`}>
+                        {item.text}
+                      </p>
+                      <p className={`text-xs mt-1 ${isOwn ? 'text-blue-200' : 'text-slate-400'}`}>
+                        {new Date(item.date).toLocaleString('ru-RU', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                    </div>
                   )}
                 </div>
               </div>
@@ -255,6 +268,34 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
           ➤
         </button>
       </div>
+
+      {/* Контекстное меню для сообщений */}
+      {contextMenuMessageId && (
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setContextMenuMessageId(null)}
+        >
+          <div 
+            className="bg-white rounded-xl p-2 w-48 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="w-full flex items-center gap-3 p-3 hover:bg-slate-100 rounded-lg transition-colors text-left"
+              onClick={() => handleContextMenuAction('edit', contextMenuMessageId)}
+            >
+              <span className="text-xl">✏️</span>
+              <span className="text-base text-slate-800">Редактировать</span>
+            </button>
+            <button
+              className="w-full flex items-center gap-3 p-3 hover:bg-red-50 rounded-lg transition-colors text-left"
+              onClick={() => handleContextMenuAction('delete', contextMenuMessageId)}
+            >
+              <span className="text-xl">🗑️</span>
+              <span className="text-base text-red-600">Удалить</span>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
