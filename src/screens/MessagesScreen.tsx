@@ -40,6 +40,9 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
     console.log('New message:', newMessage);
     console.log('Selected recipient:', selectedRecipient);
     
+    const messageText = newMessage; // Сохраняем текст перед очисткой
+    setNewMessage(''); // Очищаем поле сразу
+    
     const recipient = recipients[selectedRecipient];
     const success = await sendMessage({
       fromId: employee.id,
@@ -47,7 +50,7 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
       toId: recipient.id,
       toName: recipient.name,
       role: 'Сотрудник',
-      text: newMessage,
+      text: messageText,
       read: false,
       priority: 'Обычное',
     });
@@ -55,10 +58,10 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
     console.log('Send result:', success);
 
     if (success) {
-      setNewMessage('');
-      console.log('Message input cleared');
+      console.log('Message sent successfully');
     } else {
       console.error('Failed to send message');
+      setNewMessage(messageText); // Возвращаем текст, если отправка не удалась
     }
   };
 
