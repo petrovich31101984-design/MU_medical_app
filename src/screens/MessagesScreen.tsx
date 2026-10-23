@@ -209,16 +209,18 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
                       {isOwn && (
                         <div className="flex gap-1 mt-1 justify-end">
                           <button
-                            className="text-xs text-slate-500 hover:text-blue-600 px-2 py-1 rounded transition-colors"
+                            className="text-lg hover:scale-110 transition-transform"
                             onClick={() => handleEdit(item)}
+                            title="Редактировать"
                           >
-                            ✏️ Редактировать
+                            ✏️
                           </button>
                           <button
-                            className="text-xs text-slate-500 hover:text-red-600 px-2 py-1 rounded transition-colors"
+                            className="text-lg hover:scale-110 transition-transform"
                             onClick={() => handleDelete(item.id)}
+                            title="Удалить"
                           >
-                            🗑️ Удалить
+                            🗑️
                           </button>
                         </div>
                       )}
