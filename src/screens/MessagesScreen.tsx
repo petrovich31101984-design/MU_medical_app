@@ -26,6 +26,13 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
   useEffect(() => {
     if (employee) {
       loadMessages(employee.id);
+      
+      // Автоматическое обновление сообщений каждые 5 секунд
+      const interval = setInterval(() => {
+        loadMessages(employee.id);
+      }, 5000);
+      
+      return () => clearInterval(interval);
     }
   }, [employee]);
 
@@ -142,14 +149,23 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      <div className="bg-white p-4 border-b border-slate-200 flex items-center">
+      <div className="bg-white p-4 border-b border-slate-200 flex items-center justify-between">
+        <div className="flex items-center">
+          <button
+            onClick={onBack}
+            className="text-blue-600 mr-4 p-2 hover:bg-blue-50 rounded-lg transition-colors"
+          >
+            ← Назад
+          </button>
+          <h1 className="text-lg font-bold text-slate-800">Сообщения</h1>
+        </div>
         <button
-          onClick={onBack}
-          className="text-blue-600 mr-4 p-2 hover:bg-blue-50 rounded-lg transition-colors"
+          onClick={() => employee && loadMessages(employee.id)}
+          className="text-blue-600 p-2 hover:bg-blue-50 rounded-lg transition-colors"
+          title="Обновить сообщения"
         >
-          ← Назад
+          🔄
         </button>
-        <h1 className="text-lg font-bold text-slate-800">Сообщения</h1>
       </div>
 
       {/* Выбор получателя */}
