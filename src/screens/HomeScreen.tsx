@@ -113,14 +113,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
                     </p>
                   </div>
                 ))}
-              {announcements.filter(isAnnouncementActive).length > 1 && (
-                <button
-                  className="w-full mt-3 py-2 text-sm text-yellow-700 font-medium hover:bg-yellow-100 rounded-lg transition-colors"
-                  onClick={() => onNavigate('Announcements')}
-                >
-                  Показать все объявления →
-                </button>
-              )}
+
             </div>
           ) : (
             <div className="text-center py-4">
