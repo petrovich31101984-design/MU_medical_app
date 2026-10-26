@@ -449,7 +449,64 @@ function updateChatMessageData(id, updates) {
 // ==================== ОБЪЯВЛЕНИЯ ====================
 
 function getAnnouncementsData() {
-  return readSheetData('Объявления');
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Объявления');
+  
+  if (!sheet) {
+    Logger.log('Лист "Объявления" не найден');
+    return [];
+  }
+  
+  const data = sheet.getDataRange().getValues();
+  
+  if (data.length < 2) {
+    Logger.log('Нет данных в таблице объявлений');
+    return [];
+  }
+  
+  const headers = data[0];
+  Logger.log('Заголовки объявлений: ' + JSON.stringify(headers));
+  
+  const announcements = data.slice(1).map((row, index) => {
+    const obj = {};
+    headers.forEach((h, i) => {
+      const val = row[i];
+      
+      // Преобразуем поле "Активно" в boolean
+      if (h === 'Активно') {
+        obj['active'] = (val === 'ДА' || val === true || val === 'true');
+      } 
+      // Преобразуем дату
+      else if (h === 'Дата' && val instanceof Date) {
+        obj['date'] = val.toISOString();
+      } 
+      // Преобразуем получателей из JSON строки
+      else if (h === 'Получатели' && typeof val === 'string' && val) {
+        try {
+          obj['recipients'] = JSON.parse(val);
+        } catch (e) {
+          obj['recipients'] = [];
+        }
+      }
+      // Остальные поля как есть
+      else {
+        obj[h] = val || '';
+      }
+    });
+    
+    // Добавляем ID если его нет
+    if (!obj['ID']) {
+      obj['ID'] = 'ANN-' + (index + 1);
+    }
+    
+    Logger.log('Объявление #' + (index + 1) + ': ' + JSON.stringify(obj));
+    
+    return obj;
+  });
+  
+  Logger.log('Всего объявлений: ' + announcements.length);
+  
+  return announcements;
 }
 
 function createAnnouncementData(data) {
