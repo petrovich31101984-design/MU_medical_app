@@ -72,9 +72,36 @@ export const useDataStore = create<DataStore>((set, get) => ({
   loadAnnouncements: async () => {
     set({ loading: true });
     const response = await api.getAnnouncements();
+    console.log('=== LOADING ANNOUNCEMENTS ===');
+    console.log('Response:', response);
+    
     if (response.success && response.data) {
-      set({ announcements: response.data, loading: false });
+      // Нормализуем данные объявлений
+      const normalizedAnnouncements = response.data.map((ann: any) => {
+        console.log('Announcement data:', ann);
+        
+        // Определяем активность объявления
+        const isActive = ann.active === true || 
+                        ann.active === 'ДА' || 
+                        ann['Активно'] === 'ДА' || 
+                        ann['Активно'] === true ||
+                        ann['Активно'] === 'true';
+        
+        return {
+          ...ann,
+          id: ann.id || ann['ID'] || `ann-${Math.random()}`,
+          title: ann.title || ann['Заголовок'] || '',
+          text: ann.text || ann['Текст'] || '',
+          createdBy: ann.createdBy || ann['Кем создано'] || '',
+          date: ann.date || ann['Дата'] || new Date().toISOString(),
+          active: isActive
+        };
+      });
+      
+      console.log('Normalized announcements:', normalizedAnnouncements);
+      set({ announcements: normalizedAnnouncements, loading: false });
     } else {
+      console.error('Failed to load announcements:', response.error);
       set({ loading: false });
     }
   },
