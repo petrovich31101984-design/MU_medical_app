@@ -90,31 +90,30 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
       <div className="m-5 announcement-border">
         <div className="relative bg-yellow-50 p-4 rounded-[10px]">
           {announcements.filter(isAnnouncementActive).length > 0 ? (
-            <>
-              <div className="space-y-3">
-                {announcements
-                  .filter(isAnnouncementActive)
-                  .slice(0, 3)
-                  .map((announcement) => (
-                    <div key={announcement.id} className="bg-white p-3 rounded-lg border border-yellow-200">
-                      <div className="flex justify-between items-start mb-1">
-                        <h4 className="text-sm font-bold text-slate-800 flex-1">
-                          {announcement.title}
-                        </h4>
-                        <span className="text-xs text-slate-400 ml-2 whitespace-nowrap">
-                          {new Date(announcement.date).toLocaleDateString('ru-RU')}
-                        </span>
-                      </div>
-                      <p className="text-sm text-slate-600 leading-relaxed">
-                        {announcement.text}
-                      </p>
-                      <p className="text-xs text-slate-400 mt-2">
-                        От: {announcement.createdBy}
-                      </p>
+            <div className="space-y-3">
+              {announcements
+                .filter(isAnnouncementActive)
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                .slice(0, 1)
+                .map((announcement) => (
+                  <div key={announcement.id} className="bg-white p-3 rounded-lg border border-yellow-200">
+                    <div className="flex justify-between items-start mb-1">
+                      <h4 className="text-sm font-bold text-slate-800 flex-1">
+                        {announcement.title}
+                      </h4>
+                      <span className="text-xs text-slate-400 ml-2 whitespace-nowrap">
+                        {new Date(announcement.date).toLocaleDateString('ru-RU')}
+                      </span>
                     </div>
-                  ))}
-              </div>
-              {announcements.filter(isAnnouncementActive).length > 3 && (
+                    <p className="text-sm text-slate-600 leading-relaxed">
+                      {announcement.text}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-2">
+                      От: {announcement.createdBy}
+                    </p>
+                  </div>
+                ))}
+              {announcements.filter(isAnnouncementActive).length > 1 && (
                 <button
                   className="w-full mt-3 py-2 text-sm text-yellow-700 font-medium hover:bg-yellow-100 rounded-lg transition-colors"
                   onClick={() => onNavigate('Announcements')}
@@ -122,7 +121,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
                   Показать все объявления →
                 </button>
               )}
-            </>
+            </div>
           ) : (
             <div className="text-center py-4">
               <p className="text-sm text-slate-500">📢 Нет новых объявлений</p>
