@@ -57,7 +57,17 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
   };
 
   const unreadMessages = 0;
-  const activeAnnouncements = announcements.filter(a => a.active).length;
+  
+  // Функция для проверки активности объявления (поддержка разных форматов)
+  const isAnnouncementActive = (announcement: any) => {
+    return announcement.active === true || 
+           announcement.active === 'ДА' || 
+           announcement['Активно'] === 'ДА' || 
+           announcement['Активно'] === true ||
+           announcement['Активно'] === 'true';
+  };
+  
+  const activeAnnouncements = announcements.filter(isAnnouncementActive).length;
 
   return (
     <div className="min-h-screen bg-slate-50 pb-48">
@@ -79,40 +89,32 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
       {/* Announcements from Manager */}
       <div className="m-5 announcement-border">
         <div className="relative bg-yellow-50 p-4 rounded-[10px]">
-          {announcements.filter(a => a.active).length > 0 ? (
-            <>
-              <div className="space-y-3">
-                {announcements
-                  .filter(a => a.active)
-                  .slice(0, 3)
-                  .map((announcement) => (
-                    <div key={announcement.id} className="bg-white p-3 rounded-lg border border-yellow-200">
-                      <div className="flex justify-between items-start mb-1">
-                        <h4 className="text-sm font-bold text-slate-800 flex-1">
-                          {announcement.title}
-                        </h4>
-                        <span className="text-xs text-slate-400 ml-2 whitespace-nowrap">
-                          {new Date(announcement.date).toLocaleDateString('ru-RU')}
-                        </span>
-                      </div>
-                      <p className="text-sm text-slate-600 leading-relaxed">
-                        {announcement.text}
-                      </p>
-                      <p className="text-xs text-slate-400 mt-2">
-                        От: {announcement.createdBy}
-                      </p>
+          {announcements.filter(isAnnouncementActive).length > 0 ? (
+            <div className="space-y-3">
+              {announcements
+                .filter(isAnnouncementActive)
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                .slice(0, 1)
+                .map((announcement) => (
+                  <div key={announcement.id} className="bg-white p-3 rounded-lg border border-yellow-200">
+                    <div className="flex justify-between items-start mb-1">
+                      <h4 className="text-sm font-bold text-slate-800 flex-1">
+                        {announcement.title}
+                      </h4>
+                      <span className="text-xs text-slate-400 ml-2 whitespace-nowrap">
+                        {new Date(announcement.date).toLocaleDateString('ru-RU')}
+                      </span>
                     </div>
-                  ))}
-              </div>
-              {announcements.filter(a => a.active).length > 3 && (
-                <button
-                  className="w-full mt-3 py-2 text-sm text-yellow-700 font-medium hover:bg-yellow-100 rounded-lg transition-colors"
-                  onClick={() => onNavigate('Announcements')}
-                >
-                  Показать все объявления →
-                </button>
-              )}
-            </>
+                    <p className="text-sm text-slate-600 leading-relaxed">
+                      {announcement.text}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-2">
+                      От: {announcement.createdBy}
+                    </p>
+                  </div>
+                ))}
+
+            </div>
           ) : (
             <div className="text-center py-4">
               <p className="text-sm text-slate-500">📢 Нет новых объявлений</p>

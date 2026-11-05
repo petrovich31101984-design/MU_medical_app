@@ -13,7 +13,16 @@ export default function AnnouncementsScreen({ onBack }: AnnouncementsScreenProps
     loadAnnouncements();
   }, []);
 
-  const activeAnnouncements = announcements.filter(a => a.active);
+  // Функция для проверки активности объявления (поддержка разных форматов)
+  const isAnnouncementActive = (announcement: any) => {
+    return announcement.active === true || 
+           announcement.active === 'ДА' || 
+           announcement['Активно'] === 'ДА' || 
+           announcement['Активно'] === true ||
+           announcement['Активно'] === 'true';
+  };
+
+  const activeAnnouncements = announcements.filter(isAnnouncementActive);
 
   return (
     <div className="min-h-screen bg-slate-50">

@@ -7,6 +7,15 @@ interface ExpenseSheetScreenProps {
   onBack: () => void;
 }
 
+const formatBirthDate = (value: string) => {
+  const digits = value.replace(/\D/g, '').slice(0, 8);
+
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
+
+  return `${digits.slice(0, 2)}.${digits.slice(2, 4)}.${digits.slice(4)}`;
+};
+
 export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) {
   const { employee } = useAuthStore();
   const { nomenclature, loading: nomenclatureLoading, loadNomenclature, createExpenseSheet } = useDataStore();
@@ -158,9 +167,11 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
             <label className="text-sm text-slate-500 mb-2 block">Дата рождения</label>
             <input
               type="text"
+              inputMode="numeric"
+              maxLength={10}
               className="w-full border border-slate-200 rounded-lg p-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={patientBirthDate}
-              onChange={(e) => setPatientBirthDate(e.target.value)}
+              onChange={(e) => setPatientBirthDate(formatBirthDate(e.target.value))}
               placeholder="ДД.ММ.ГГГГ"
             />
           </div>
