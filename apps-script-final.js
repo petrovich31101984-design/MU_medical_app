@@ -1,7 +1,7 @@
 /**
  * СМУ - Система Медицинского Учёта
  * Google Apps Script Web App для руководителя + сотрудника
- * Версия 0.5.3
+ * Версия 0.5.4
  */
 
 // ==================== ГЛАВНЫЕ ФУНКЦИИ ====================
@@ -9,11 +9,11 @@
 function doGet(e) {
   try {
     const action = e.parameter.action;
-    
-    switch(action) {
+
+    switch (action) {
       case 'test':
-        return jsonResponse({ 
-          success: true, 
+        return jsonResponse({
+          success: true,
           title: SpreadsheetApp.getActiveSpreadsheet().getName(),
           sheets: SpreadsheetApp.getActiveSpreadsheet().getSheets().map(s => s.getName())
         });
@@ -56,8 +56,8 @@ function doPost(e) {
     const body = JSON.parse(e.postData.contents);
     const action = body.action;
     const data = body.data;
-    
-    switch(action) {
+
+    switch (action) {
       // Сотрудники
       case 'addEmployee':
         addEmployeeData(data);
@@ -71,7 +71,7 @@ function doPost(e) {
       case 'deleteEmployee':
         deleteEmployeeData(data.id);
         return jsonResponse({ success: true });
-      
+
       // Номенклатура
       case 'addNomenclature':
         addNomenclatureData(data);
@@ -82,7 +82,7 @@ function doPost(e) {
       case 'deleteNomenclature':
         deleteNomenclatureData(data.id);
         return jsonResponse({ success: true });
-      
+
       // Приход
       case 'addArrival':
         addArrivalData(data);
@@ -99,12 +99,12 @@ function doPost(e) {
       case 'restoreArrival':
         restoreArrivalData(data.id);
         return jsonResponse({ success: true });
-      
+
       // Расход
       case 'addExpense':
         addExpenseData(data);
         return jsonResponse({ success: true });
-      
+
       // Листы расхода
       case 'addExpenseSheet':
         addExpenseSheetData(data);
@@ -118,32 +118,39 @@ function doPost(e) {
       case 'restoreExpenseSheet':
         restoreExpenseSheetData(data.id);
         return jsonResponse({ success: true });
-      
+
       // Возвраты
       case 'addReturn':
         addReturnData(data);
         return jsonResponse({ success: true });
-      
+
       // Чат
       case 'addChatMessage':
         addChatMessageData(data);
         return jsonResponse({ success: true });
-      case 'updateChatMessage':
+      case 'updateChatMessage': {
         const { id, ...updates } = data;
         updateChatMessageData(id, updates);
         return jsonResponse({ success: true });
+      }
       case 'editChatMessage':
         updateChatMessageData(data.id, { 'Текст': data.text });
         return jsonResponse({ success: true });
       case 'deleteChatMessage':
         deleteChatMessageData(data.id);
         return jsonResponse({ success: true });
-      
+
       // Объявления
       case 'createAnnouncement':
         createAnnouncementData(data);
         return jsonResponse({ success: true });
-      
+      case 'updateAnnouncement':
+        updateAnnouncementData(data['ID'], data);
+        return jsonResponse({ success: true });
+      case 'deleteAnnouncement':
+        deleteAnnouncementData(data['ID']);
+        return jsonResponse({ success: true });
+
       // Журнал изменений
       case 'addAuditLog':
         addAuditLogData(data);
@@ -151,7 +158,7 @@ function doPost(e) {
       case 'clearAuditLog':
         clearAuditLogData();
         return jsonResponse({ success: true });
-      
+
       default:
         return jsonResponse({ error: 'Неизвестное действие: ' + action });
     }
@@ -172,10 +179,10 @@ function readSheetData(sheetName) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(sheetName);
   if (!sheet) return [];
-  
+
   const data = sheet.getDataRange().getValues();
   if (data.length < 2) return [];
-  
+
   const headers = data[0];
   return data.slice(1).filter(row => row[0] !== '').map(row => {
     const obj = {};
@@ -203,7 +210,7 @@ function appendRow(sheetName, rowData) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(sheetName);
   if (!sheet) throw new Error('Лист не найден: ' + sheetName);
-  
+
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   const row = headers.map(h => rowData[h] !== undefined ? rowData[h] : '');
   sheet.appendRow(row);
@@ -213,39 +220,55 @@ function updateRow(sheetName, id, updates) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(sheetName);
   if (!sheet) throw new Error('Лист не найден: ' + sheetName);
-  
+
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
   const idColumn = headers.indexOf('ID');
-  
+
+  if (idColumn === -1) {
+    throw new Error('Столбец "ID" не найден в листе "' + sheetName + '"');
+  }
+
+  const searchId = String(id).trim();
+
   for (let i = 1; i < data.length; i++) {
-    if (data[i][idColumn] === id) {
+    if (String(data[i][idColumn]).trim() === searchId) {
       Object.keys(updates).forEach(key => {
         const colIndex = headers.indexOf(key);
         if (colIndex !== -1) {
           sheet.getRange(i + 1, colIndex + 1).setValue(updates[key]);
         }
       });
-      break;
+      return;
     }
   }
+
+  throw new Error('Запись с ID ' + id + ' не найдена');
 }
 
 function deleteRow(sheetName, id) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(sheetName);
   if (!sheet) throw new Error('Лист не найден: ' + sheetName);
-  
+
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
   const idColumn = headers.indexOf('ID');
-  
+
+  if (idColumn === -1) {
+    throw new Error('Столбец "ID" не найден в листе "' + sheetName + '"');
+  }
+
+  const searchId = String(id).trim();
+
   for (let i = 1; i < data.length; i++) {
-    if (data[i][idColumn] === id) {
+    if (String(data[i][idColumn]).trim() === searchId) {
       sheet.deleteRow(i + 1);
-      break;
+      return { success: true, deletedId: id };
     }
   }
+
+  throw new Error('Запись с ID ' + id + ' не найдена');
 }
 
 // ==================== СОТРУДНИКИ ====================
@@ -301,15 +324,25 @@ function getArrivalsData() {
 }
 
 function addArrivalData(data) {
-  if (data.items && Array.isArray(data.items)) {
-    data.items = JSON.stringify(data.items);
+  const positions = data.items ?? data['Позиции'] ?? data['Позиции (JSON)'];
+  if (positions !== undefined) {
+    const serializedPositions = typeof positions === 'string'
+      ? positions
+      : JSON.stringify(positions);
+    data['Позиции'] = serializedPositions;
+    data['Позиции (JSON)'] = serializedPositions;
   }
   appendRow('Приход', data);
 }
 
 function updateArrivalData(id, updates) {
-  if (updates.items && Array.isArray(updates.items)) {
-    updates.items = JSON.stringify(updates.items);
+  const positions = updates.items ?? updates['Позиции'] ?? updates['Позиции (JSON)'];
+  if (positions !== undefined) {
+    const serializedPositions = typeof positions === 'string'
+      ? positions
+      : JSON.stringify(positions);
+    updates['Позиции'] = serializedPositions;
+    updates['Позиции (JSON)'] = serializedPositions;
   }
   updateRow('Приход', id, updates);
 }
@@ -342,16 +375,16 @@ function getExpenseSheetsData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName('Листы расхода');
   if (!sheet) return [];
-  
+
   const data = sheet.getDataRange().getValues();
   if (data.length < 2) return [];
-  
+
   const headers = data[0];
-  return data.slice(1).map(row => {
+  return data.slice(1).filter(row => row[0] !== '').map(row => {
     const obj = {};
     headers.forEach((h, i) => {
       const val = row[i];
-      if (h === 'items' || h === 'Позиции') {
+      if (h === 'items' || h === 'Позиции' || h === 'Позиции (JSON)') {
         if (typeof val === 'string' && val) {
           try {
             obj[h] = JSON.parse(val);
@@ -380,15 +413,38 @@ function getExpenseSheetsData() {
 }
 
 function addExpenseSheetData(data) {
-  if (data.items && Array.isArray(data.items)) {
-    data.items = JSON.stringify(data.items);
-  }
-  appendRow('Листы расхода', data);
+  const positions = data.items ?? data['Позиции'] ?? data['Позиции (JSON)'];
+  const serializedPositions = typeof positions === 'string'
+    ? positions
+    : JSON.stringify(positions || []);
+
+  appendRow('Листы расхода', {
+    'ID': data['ID'] || data.id || 'SHEET-' + Date.now(),
+    'Сотрудник_ID': data['Сотрудник_ID'] ?? data.employeeId ?? '',
+    'Сотрудник': data['Сотрудник'] ?? data.employeeName ?? '',
+    'Пациент': data['Пациент'] ?? data.patientName ?? '',
+    'Дата рождения пациента': data['Дата рождения пациента'] ?? data.patientBirthDate ?? '',
+    'Дата': data['Дата'] ?? data.date ?? '',
+    'Месяц': data['Месяц'] ?? data.month ?? '',
+    'Категория выезда': data['Категория выезда'] ?? data.callCategory ?? '',
+    'Название терапии': data['Название терапии'] ?? data.therapyName ?? '',
+    'Стоимость терапии': data['Стоимость терапии'] ?? data.therapyCost ?? 0,
+    'Итого по препаратам': data['Итого по препаратам'] ?? data.totalAmount ?? 0,
+    'Позиции': serializedPositions,
+    'Позиции (JSON)': serializedPositions,
+    'Архив': data['Архив'] ?? (data.archived ? 'ДА' : 'НЕТ'),
+    'Дата создания': data['Дата создания'] ?? new Date()
+  });
 }
 
 function updateExpenseSheetData(id, updates) {
-  if (updates.items && Array.isArray(updates.items)) {
-    updates.items = JSON.stringify(updates.items);
+  const positions = updates.items ?? updates['Позиции'] ?? updates['Позиции (JSON)'];
+  if (positions !== undefined) {
+    const serializedPositions = typeof positions === 'string'
+      ? positions
+      : JSON.stringify(positions);
+    updates['Позиции'] = serializedPositions;
+    updates['Позиции (JSON)'] = serializedPositions;
   }
   updateRow('Листы расхода', id, updates);
 }
@@ -417,10 +473,10 @@ function getChatData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName('Чат');
   if (!sheet) return [];
-  
+
   const data = sheet.getDataRange().getValues();
   if (data.length < 2) return [];
-  
+
   const headers = data[0];
   return data.slice(1).map((row, index) => {
     const obj = {};
@@ -439,78 +495,45 @@ function getChatData() {
 }
 
 function addChatMessageData(data) {
-  appendRow('Чат', data);
+  appendRow('Чат', {
+    'ID': data['ID'] || data.id || 'MSG-' + Date.now(),
+    'От кого (ID)': data['От кого (ID)'] ?? data.fromId ?? '',
+    'От кого (ФИО)': data['От кого (ФИО)'] ?? data.fromName ?? '',
+    'Кому (ID)': data['Кому (ID)'] ?? data.toId ?? '',
+    'Кому (ФИО)': data['Кому (ФИО)'] ?? data.toName ?? '',
+    'Роль': data['Роль'] ?? data.role ?? 'Сотрудник',
+    'Текст': data['Текст'] ?? data.text ?? '',
+    'Дата и время': data['Дата и время'] ?? data.date ?? new Date(),
+    'Прочитано': data['Прочитано'] ?? data.read ?? false,
+    'Тип': data['Тип'] ?? data.type ?? '',
+    'Приоритет': data['Приоритет'] ?? data.priority ?? 'Обычное'
+  });
 }
 
 function updateChatMessageData(id, updates) {
   updateRow('Чат', id, updates);
 }
 
+function deleteChatMessageData(id) {
+  deleteRow('Чат', id);
+}
+
 // ==================== ОБЪЯВЛЕНИЯ ====================
 
 function getAnnouncementsData() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName('Объявления');
-  
-  if (!sheet) {
-    Logger.log('Лист "Объявления" не найден');
-    return [];
-  }
-  
-  const data = sheet.getDataRange().getValues();
-  
-  if (data.length < 2) {
-    Logger.log('Нет данных в таблице объявлений');
-    return [];
-  }
-  
-  const headers = data[0];
-  Logger.log('Заголовки объявлений: ' + JSON.stringify(headers));
-  
-  const announcements = data.slice(1).map((row, index) => {
-    const obj = {};
-    headers.forEach((h, i) => {
-      const val = row[i];
-      
-      // Преобразуем поле "Активно" в boolean
-      if (h === 'Активно') {
-        obj['active'] = (val === 'ДА' || val === true || val === 'true');
-      } 
-      // Преобразуем дату
-      else if (h === 'Дата' && val instanceof Date) {
-        obj['date'] = val.toISOString();
-      } 
-      // Преобразуем получателей из JSON строки
-      else if (h === 'Получатели' && typeof val === 'string' && val) {
-        try {
-          obj['recipients'] = JSON.parse(val);
-        } catch (e) {
-          obj['recipients'] = [];
-        }
-      }
-      // Остальные поля как есть
-      else {
-        obj[h] = val || '';
-      }
-    });
-    
-    // Добавляем ID если его нет
-    if (!obj['ID']) {
-      obj['ID'] = 'ANN-' + (index + 1);
-    }
-    
-    Logger.log('Объявление #' + (index + 1) + ': ' + JSON.stringify(obj));
-    
-    return obj;
-  });
-  
-  Logger.log('Всего объявлений: ' + announcements.length);
-  
-  return announcements;
+  return readSheetData('Объявления');
 }
 
 function createAnnouncementData(data) {
   appendRow('Объявления', data);
+}
+
+function updateAnnouncementData(id, updates) {
+  updateRow('Объявления', id, updates);
+}
+
+function deleteAnnouncementData(id) {
+  return deleteRow('Объявления', id);
 }
 
 // ==================== ЖУРНАЛ ИЗМЕНЕНИЙ ====================
@@ -527,7 +550,7 @@ function clearAuditLogData() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName('Журнал изменений');
   if (!sheet) return;
-  
+
   const lastRow = sheet.getLastRow();
   if (lastRow > 1) {
     sheet.deleteRows(2, lastRow - 1);
@@ -537,59 +560,41 @@ function clearAuditLogData() {
 // ==================== АВТОРИЗАЦИЯ СОТРУДНИКА ====================
 
 function authenticateEmployee(personalNumber, password) {
-  Logger.log('=== AUTHENTICATE ===');
-  Logger.log('Введенный номер: [' + personalNumber + ']');
-  Logger.log('Введенный пароль: [' + password + ']');
-  
   if (!personalNumber || !password) {
     return { success: false, error: 'Не указан персональный номер или пароль' };
   }
-  
+
   const employees = getEmployeesData();
-  Logger.log('Всего сотрудников: ' + employees.length);
-  
-  const employee = employees.find(e => String(e['Персональный номер']).trim() === String(personalNumber).trim());
-  
+  const employee = employees.find(item =>
+    String(item['Персональный номер']).trim() === String(personalNumber).trim()
+  );
+
   if (!employee) {
-    Logger.log('Сотрудник не найден');
-    Logger.log('Все номера в таблице:');
-    employees.forEach(e => Logger.log('  - [' + e['Персональный номер'] + ']'));
     return { success: false, error: 'Сотрудник не найден' };
   }
-  
-  Logger.log('Сотрудник найден: ' + employee['ФИО']);
-  
-  let storedPassword = employee['Пароль'];
-  Logger.log('Пароль в таблице: [' + storedPassword + ']');
-  Logger.log('Тип пароля: ' + typeof storedPassword);
-  
-  const storedPass = String(storedPassword).trim();
-  const inputPass = String(password).trim();
-  
-  Logger.log('После преобразования:');
-  Logger.log('  В таблице: [' + storedPass + '] (длина: ' + storedPass.length + ')');
-  Logger.log('  Введенный: [' + inputPass + '] (длина: ' + inputPass.length + ')');
-  Logger.log('  Совпадают: ' + (storedPass === inputPass));
-  
-  if (storedPass !== inputPass) {
-    if (Number(storedPass) === Number(inputPass) && storedPass !== '' && inputPass !== '') {
-      Logger.log('Совпадают как числа!');
-    } else {
-      Logger.log('Пароли НЕ совпадают');
-      return { success: false, error: 'Неверный пароль' };
-    }
+
+  const storedPassword = String(employee['Пароль'] ?? employee['Пароль (хэш)'] ?? '').trim();
+  const inputPassword = String(password).trim();
+  const passwordsMatch =
+    storedPassword === inputPassword ||
+    (
+      storedPassword !== '' &&
+      inputPassword !== '' &&
+      Number(storedPassword) === Number(inputPassword)
+    );
+
+  if (!passwordsMatch) {
+    return { success: false, error: 'Неверный пароль' };
   }
-  
-  Logger.log('Вход успешен!');
-  
+
   if (employee['Заблокирован'] === 'ДА' || employee['Заблокирован'] === true) {
     return { success: false, error: 'Аккаунт заблокирован' };
   }
-  
+
   if (employee['Статус'] === 'Уволен') {
     return { success: false, error: 'Аккаунт уволен' };
   }
-  
+
   return {
     success: true,
     id: employee['ID'],
@@ -606,33 +611,56 @@ function authenticateEmployee(personalNumber, password) {
   };
 }
 
-// ==================== ЛИСТЫ РАСХОДА СОТРУДНИКА ====================
+// ==================== ДАННЫЕ СОТРУДНИКА ====================
 
 function getEmployeeExpenseSheetsData(employeeId) {
-  const sheets = getExpenseSheetsData();
-  return sheets.filter(s => s['Сотрудник_ID'] === employeeId);
+  return getExpenseSheetsData()
+    .filter(sheet => String(sheet['Сотрудник_ID']).trim() === String(employeeId).trim())
+    .map(sheet => ({
+      ...sheet,
+      id: sheet['ID'],
+      employeeId: sheet['Сотрудник_ID'],
+      employeeName: sheet['Сотрудник'],
+      patientName: sheet['Пациент'],
+      patientBirthDate: sheet['Дата рождения пациента'],
+      date: sheet['Дата'],
+      month: sheet['Месяц'],
+      callCategory: sheet['Категория выезда'],
+      therapyName: sheet['Название терапии'],
+      therapyCost: sheet['Стоимость терапии'],
+      totalAmount: sheet['Итого по препаратам'],
+      items: sheet['Позиции'] ?? sheet['Позиции (JSON)'] ?? [],
+      archived: sheet['Архив'] === 'ДА' || sheet['Архив'] === true
+    }));
 }
-
-// ==================== СООБЩЕНИЯ СОТРУДНИКА ====================
 
 function getEmployeeMessagesData(employeeId) {
-  const messages = getChatData();
-  return messages.filter(m => 
-    m['От кого (ID)'] === employeeId || m['Кому (ID)'] === employeeId
-  );
-}
+  const searchId = String(employeeId).trim();
 
-// ==================== УДАЛЕНИЕ СООБЩЕНИЯ ====================
-
-function deleteChatMessageData(id) {
-  deleteRow('Чат', id);
+  return getChatData()
+    .filter(message =>
+      String(message['От кого (ID)']).trim() === searchId ||
+      String(message['Кому (ID)']).trim() === searchId
+    )
+    .map(message => ({
+      id: message['ID'],
+      fromId: message['От кого (ID)'],
+      fromName: message['От кого (ФИО)'],
+      toId: message['Кому (ID)'],
+      toName: message['Кому (ФИО)'],
+      role: message['Роль'] || 'Сотрудник',
+      text: message['Текст'],
+      date: message['Дата и время'],
+      read: message['Прочитано'] === true || message['Прочитано'] === 'ДА' || message['Прочитано'] === 'Да',
+      priority: message['Приоритет'] || 'Обычное'
+    }));
 }
 
 // ==================== НАСТРОЙКА БАЗЫ ДАННЫХ ====================
 
 function setupDatabase() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  
+
   const requiredSheets = [
     'Сотрудники',
     'Номенклатура',
@@ -647,106 +675,42 @@ function setupDatabase() {
     'Настройки',
     'Отчёты'
   ];
-  
+
   const sheetHeaders = {
-    'Сотрудники': ['ID', 'Персональный номер', 'ФИО', 'Пароль', 'Статус', 'Должность', 'Дата найма', 'Заблокирован', 'Телефон', 'Последний вход', 'Примечание', 'Смена открыта'],
-    'Номенклатура': ['ID', 'Название', 'Категория', 'Ед. измерения', 'Производитель', 'Актуальна', 'Количество в упаковке'],
-    'Цены': ['ID', 'Номенклатура_ID', 'Цена за ед. (₽)', 'Дата начала', 'Дата окончания', 'Кем изменено'],
-    'Приход': ['ID', 'Сотрудник_ID', 'Сотрудник', 'Дата', 'Месяц', 'Сумма (₽)', 'Количество смен', 'Кем внесено', 'Тип', 'Комментарий', 'Позиции', 'Архив'],
+    'Сотрудники': ['ID', 'Персональный номер', 'ФИО', 'Пароль (хэш)', 'Статус', 'Должность', 'Дата найма', 'Дата увольнения', 'Заблокирован', 'Телефон', 'Email', 'Дата регистрации', 'Последний вход', 'Примечание', 'Смена открыта'],
+    'Номенклатура': ['ID', 'Название', 'Категория', 'Ед. измерения', 'Производитель', 'Количество в упаковке', 'Штрих-код', 'Актуальна', 'Дата создания', 'Примечание'],
+    'Цены': ['ID', 'Номенклатура_ID', 'Название', 'Цена за ед. (₽)', 'Дата начала', 'Дата окончания', 'Кем изменено', 'Дата изменения', 'Примечание'],
+    'Приход': ['ID', 'Сотрудник_ID', 'ФИО сотрудника', 'Дата', 'Месяц', 'Сумма (₽)', 'Количество смен', 'Кем внесено', 'Тип', 'Комментарий', 'Позиции (JSON)', 'Дата внесения', 'Архив'],
     'Расход': ['ID', 'Сотрудник_ID', 'Дата внесения', 'Дата вызова', 'Месяц', 'Номенклатура_ID', 'Количество', 'Пациент ФИО', 'Пациент ДР', 'Вызов_ID'],
-    'Листы расхода': ['ID', 'Сотрудник_ID', 'Сотрудник', 'Пациент', 'Дата рождения пациента', 'Дата', 'Месяц', 'Категория выезда', 'Название терапии', 'Стоимость терапии', 'Итого по препаратам', 'Позиции', 'Архив'],
+    'Листы расхода': ['ID', 'Сотрудник_ID', 'Сотрудник', 'Пациент', 'Дата рождения пациента', 'Дата', 'Месяц', 'Категория выезда', 'Название терапии', 'Стоимость терапии', 'Позиции (JSON)', 'Итого по препаратам', 'Архив', 'Дата создания'],
     'Возвраты': ['ID', 'Сотрудник_ID', 'Дата создания', 'Номенклатура_ID', 'Количество', 'Статус', 'Кем скорректировано', 'Скорректированное кол-во', 'Комментарий', 'Причина'],
     'Чат': ['ID', 'От кого (ID)', 'От кого (ФИО)', 'Кому (ID)', 'Кому (ФИО)', 'Роль', 'Текст', 'Дата и время', 'Прочитано', 'Тип', 'Приоритет'],
     'Объявления': ['ID', 'Заголовок', 'Текст', 'Получатели', 'Кем создано', 'Дата', 'Активно'],
-    'Журнал изменений': ['ID', 'Дата и время', 'Пользователь ID', 'Пользователь ФИО', 'Роль', 'Лист', 'Запись_ID', 'Действие', 'Поле', 'Было', 'Стало'],
+    'Журнал изменений': ['ID', 'Дата и время', 'Пользователь ID', 'Пользователь ФИО', 'Роль', 'Лист', 'Запись_ID', 'Действие', 'Поле', 'Было', 'Стало', 'IP', 'Устройство'],
     'Настройки': ['Ключ', 'Значение'],
     'Отчёты': ['ID', 'Тип', 'Период', 'Данные', 'Создано']
   };
-  
+
   requiredSheets.forEach(sheetName => {
     let sheet = ss.getSheetByName(sheetName);
     if (!sheet) {
       sheet = ss.insertSheet(sheetName);
       Logger.log('Создан лист: ' + sheetName);
     }
-    
+
     const headers = sheetHeaders[sheetName];
     if (headers && sheet.getLastRow() === 0) {
       sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
       Logger.log('Добавлены заголовки для листа: ' + sheetName);
     }
   });
-  
+
   const defaultSheet = ss.getSheetByName('Лист1');
   if (defaultSheet && ss.getSheets().length > 1) {
     ss.deleteSheet(defaultSheet);
     Logger.log('Удалён стандартный лист "Лист1"');
   }
-  
+
   Logger.log('База данных успешно настроена!');
   SpreadsheetApp.getUi().alert('База данных успешно настроена! Создано листов: ' + requiredSheets.length);
-}
-
-// ==================== ТЕСТОВЫЕ ФУНКЦИИ ====================
-
-function testGetChatData() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName('Чат');
-  
-  Logger.log('=== ТЕСТ getChatData ===');
-  Logger.log('Все листы: ' + ss.getSheets().map(s => s.getName()).join(', '));
-  Logger.log('Лист "Чат" найден: ' + (sheet ? 'ДА' : 'НЕТ'));
-  
-  if (sheet) {
-    const data = sheet.getDataRange().getValues();
-    Logger.log('Количество строк: ' + data.length);
-    Logger.log('Заголовки: ' + JSON.stringify(data[0]));
-    if (data.length > 1) {
-      Logger.log('Первая строка данных: ' + JSON.stringify(data[1]));
-    }
-  }
-  
-  const result = getChatData();
-  Logger.log('Результат getChatData: ' + JSON.stringify(result));
-}
-
-function testEmployeesData() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName('Сотрудники');
-  
-  Logger.log('=== ДИАГНОСТИКА ТАБЛИЦЫ СОТРУДНИКИ ===');
-  Logger.log('Лист найден: ' + (sheet ? 'ДА' : 'НЕТ'));
-  
-  if (!sheet) {
-    Logger.log('Все листы в таблице:');
-    ss.getSheets().forEach(s => Logger.log('  - ' + s.getName()));
-    return;
-  }
-  
-  const data = sheet.getDataRange().getValues();
-  Logger.log('Всего строк: ' + data.length);
-  
-  if (data.length === 0) {
-    Logger.log('Таблица пустая!');
-    return;
-  }
-  
-  Logger.log('');
-  Logger.log('=== ЗАГОЛОВКИ (строка 1) ===');
-  const headers = data[0];
-  headers.forEach((h, i) => {
-    Logger.log('Колонка ' + i + ': [' + h + '] (тип: ' + typeof h + ')');
-  });
-  
-  Logger.log('');
-  Logger.log('=== ДАННЫЕ СОТРУДНИКОВ ===');
-  for (let i = 1; i < data.length; i++) {
-    const row = data[i];
-    Logger.log('');
-    Logger.log('--- Сотрудник #' + i + ' ---');
-    headers.forEach((h, colIdx) => {
-      const val = row[colIdx];
-      Logger.log('  ' + h + ': [' + val + '] (тип: ' + typeof val + ')');
-    });
-  }
 }

@@ -118,19 +118,27 @@ class ApiService {
       console.log('=== CREATE EXPENSE SHEET REQUEST ===');
       console.log('Sheet data:', sheet);
       
-      await fetch(this.scriptUrl, {
+      const response = await fetch(this.scriptUrl, {
         method: 'POST',
-        mode: 'no-cors',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'text/plain;charset=utf-8',
         },
         body: JSON.stringify({
           action: 'addExpenseSheet',
           data: sheet,
         }),
       });
-      
-      console.log('=== CREATE EXPENSE SHEET - Request sent (no-cors mode) ===');
+
+      if (!response.ok) {
+        return { success: false, error: `Ошибка сервера: ${response.status}` };
+      }
+
+      const result = await response.json();
+      if (!result.success || result.error) {
+        return { success: false, error: result.error || 'Сервер не подтвердил сохранение' };
+      }
+
+      console.log('=== CREATE EXPENSE SHEET - Saved successfully ===');
       return { success: true };
     } catch (error: any) {
       console.error('=== CREATE EXPENSE SHEET ERROR ===');
