@@ -36,6 +36,14 @@ export interface ExpenseItem {
   total: number;
 }
 
+export interface InitialStockItem {
+  nomenclatureId: string;
+  name: string;
+  category: string;
+  unit: string;
+  quantity: number;
+}
+
 export interface ExpenseSheet {
   id: string;
   employeeId: string;

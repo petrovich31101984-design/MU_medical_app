@@ -1,6 +1,6 @@
 // API клиент для работы с Google Sheets через Apps Script
 import axios, { AxiosInstance } from 'axios';
-import { ApiResponse, Employee, ExpenseSheet, ChatMessage, Announcement, Nomenclature } from '../types';
+import { ApiResponse, Employee, ExpenseSheet, ChatMessage, Announcement, Nomenclature, InitialStockItem } from '../types';
 
 const CONFIG_KEY = 'appsScriptConfig';
 
@@ -110,6 +110,115 @@ class ApiService {
       return { success: true, data: response.data };
     } catch (error) {
       return { success: false, error: 'Ошибка загрузки номенклатуры' };
+    }
+  }
+
+  async hasInitialStock(employeeId: string): Promise<ApiResponse<boolean>> {
+    try {
+      const searchId = String(employeeId).trim();
+      const response = await this.client.get(
+        `${this.scriptUrl}?action=getInitialStock&employeeId=${encodeURIComponent(searchId)}`
+      );
+      const stockRows = Array.isArray(response.data) ? response.data : response.data?.data;
+      if (!Array.isArray(stockRows)) {
+        return { success: false, error: response.data?.error || 'Сервер вернул некорректный список начальных остатков' };
+      }
+
+      const initialized = stockRows.some((row: any) =>
+        String(row['Сотрудник_ID'] ?? row.employeeId ?? '').trim() === searchId &&
+        String(row['Номенклатура_ID'] ?? row.nomenclatureId ?? '').trim() !== ''
+      );
+      if (initialized) return { success: true, data: true };
+
+      const legacyResponse = await this.client.get(`${this.scriptUrl}?action=getArrivals`);
+      const arrivals = Array.isArray(legacyResponse.data) ? legacyResponse.data : legacyResponse.data?.data;
+      if (!Array.isArray(arrivals)) {
+        return { success: false, error: legacyResponse.data?.error || 'Сервер вернул некорректный список приходов' };
+      }
+
+      const hasLegacyStock = arrivals.some((arrival: any) =>
+        String(arrival['Сотрудник_ID'] ?? arrival.employeeId ?? '').trim() === searchId &&
+        String(arrival['Тип'] ?? arrival.type ?? '').trim().toLowerCase() === 'начальные остатки'
+      );
+      if (!hasLegacyStock) return { success: true, data: false };
+
+      const migration = await this.migrateInitialStock(searchId);
+      return migration.success
+        ? { success: true, data: true }
+        : { success: false, error: migration.error };
+    } catch (error) {
+      return { success: false, error: 'Не удалось проверить начальные остатки' };
+    }
+  }
+
+  private async migrateInitialStock(employeeId: string): Promise<ApiResponse<void>> {
+    try {
+      const response = await fetch(this.scriptUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8',
+        },
+        body: JSON.stringify({
+          action: 'migrateInitialStock',
+          data: { employeeId },
+        }),
+      });
+
+      if (!response.ok) {
+        return { success: false, error: `Ошибка сервера: ${response.status}` };
+      }
+
+      const result = await response.json();
+      if (!result.success || result.error) {
+        return { success: false, error: result.error || 'Не удалось перенести начальные остатки' };
+      }
+
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: 'Ошибка переноса начальных остатков' };
+    }
+  }
+
+  async saveInitialStock(
+    employeeId: string,
+    employeeName: string,
+    items: InitialStockItem[]
+  ): Promise<ApiResponse<void>> {
+    try {
+      const now = new Date();
+      const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const response = await fetch(this.scriptUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'text/plain;charset=utf-8',
+        },
+        body: JSON.stringify({
+          action: 'addInitialStock',
+          data: {
+            'ID': `INITIAL-${employeeId}`,
+            'Сотрудник_ID': employeeId,
+            'ФИО сотрудника': employeeName,
+            'Дата': now.toISOString(),
+            'Период': month,
+            'Позиции (JSON)': JSON.stringify(items),
+            'Дата внесения': now.toISOString(),
+            'Комментарий': 'Первичный ввод остатков сотрудником',
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        return { success: false, error: `Ошибка сервера: ${response.status}` };
+      }
+
+      const result = await response.json();
+      if (!result.success || result.error) {
+        return { success: false, error: result.error || 'Сервер не подтвердил сохранение' };
+      }
+
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: 'Ошибка сохранения начальных остатков' };
     }
   }
 

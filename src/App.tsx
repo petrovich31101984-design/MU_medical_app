@@ -12,13 +12,17 @@ import ProfileScreen from './screens/ProfileScreen';
 import SetupScreen from './screens/SetupScreen';
 import ReturnScreen from './screens/ReturnScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import InitialStockScreen from './screens/InitialStockScreen';
 
-type Screen = 'Setup' | 'Login' | 'Home' | 'ExpenseSheet' | 'Messages' | 'Announcements' | 'Profile' | 'Return' | 'Settings';
+type Screen = 'Setup' | 'Login' | 'Home' | 'ExpenseSheet' | 'Messages' | 'Announcements' | 'Profile' | 'Return' | 'Settings' | 'InitialStock';
+type InitialStockStatus = 'checking' | 'required' | 'completed' | 'error';
 
 export default function App() {
-  const { isAuthenticated, loadSession } = useAuthStore();
+  const { isAuthenticated, employee, loadSession, logout } = useAuthStore();
   const [isConfigured, setIsConfigured] = useState<boolean | null>(null);
   const [currentScreen, setCurrentScreen] = useState<Screen>('Login');
+  const [initialStockStatus, setInitialStockStatus] = useState<InitialStockStatus>('checking');
+  const [stockCheckAttempt, setStockCheckAttempt] = useState(0);
 
   useEffect(() => {
     // Инициализация API
@@ -41,10 +45,40 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (isConfigured === true && currentScreen !== 'Setup') {
-      setCurrentScreen(isAuthenticated ? 'Home' : 'Login');
+    if (isConfigured !== true) return;
+
+    if (!isAuthenticated) {
+      setInitialStockStatus('checking');
+      setCurrentScreen('Login');
+      return;
     }
-  }, [isAuthenticated, isConfigured]);
+
+    if (!employee) return;
+
+    let cancelled = false;
+    setInitialStockStatus('checking');
+
+    api.hasInitialStock(employee.id).then(response => {
+      if (cancelled) return;
+
+      if (!response.success) {
+        setInitialStockStatus('error');
+        return;
+      }
+
+      if (response.data) {
+        setInitialStockStatus('completed');
+        setCurrentScreen(current => current === 'Login' || current === 'InitialStock' ? 'Home' : current);
+      } else {
+        setInitialStockStatus('required');
+        setCurrentScreen('InitialStock');
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, isConfigured, employee?.id, stockCheckAttempt]);
 
   const handleConnected = () => {
     setIsConfigured(true);
@@ -115,6 +149,45 @@ export default function App() {
     return <SetupScreen onConnected={handleConnected} onBack={handleBackToLogin} />;
   }
 
+  if (isAuthenticated && initialStockStatus === 'checking') {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <p className="text-slate-500">Проверка начальных остатков...</p>
+      </div>
+    );
+  }
+
+  if (isAuthenticated && initialStockStatus === 'error') {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center p-5">
+        <div className="max-w-sm w-full text-center">
+          <h1 className="text-xl font-bold text-slate-800 mb-3">Не удалось проверить остатки</h1>
+          <p className="text-slate-500 mb-6">Проверьте подключение к базе данных и повторите попытку.</p>
+          <button
+            onClick={() => setStockCheckAttempt(attempt => attempt + 1)}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-5 rounded-lg w-full mb-3 transition-colors"
+          >
+            Повторить
+          </button>
+          <button onClick={logout} className="text-red-600 p-2 text-sm">Выйти</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isAuthenticated && initialStockStatus === 'required') {
+    return (
+      <div className="min-h-screen bg-slate-50 max-w-lg mx-auto shadow-xl">
+        <InitialStockScreen
+          onComplete={() => {
+            setInitialStockStatus('completed');
+            setCurrentScreen('Home');
+          }}
+        />
+      </div>
+    );
+  }
+
   // Рендер текущего экрана
   const renderScreen = () => {
     switch (currentScreen) {
@@ -136,6 +209,8 @@ export default function App() {
         return <SettingsScreen onBack={handleBack} />;
       case 'Setup':
         return <SetupScreen onConnected={handleConnected} onBack={handleBackToLogin} />;
+      case 'InitialStock':
+        return <InitialStockScreen onComplete={() => setCurrentScreen('Home')} />;
       default:
         return <HomeScreen onNavigate={handleNavigate} />;
     }

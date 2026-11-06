@@ -25,6 +25,8 @@ function doGet(e) {
         return jsonResponse(getPricesData());
       case 'getArrivals':
         return jsonResponse(getArrivalsData());
+      case 'getInitialStock':
+        return jsonResponse(getInitialStockData(e.parameter.employeeId));
       case 'getExpenses':
         return jsonResponse(getExpensesData());
       case 'getExpenseSheets':
@@ -82,6 +84,13 @@ function doPost(e) {
       case 'deleteNomenclature':
         deleteNomenclatureData(data.id);
         return jsonResponse({ success: true });
+
+      // Начальные остатки
+      case 'addInitialStock':
+        addInitialStockData(data);
+        return jsonResponse({ success: true });
+      case 'migrateInitialStock':
+        return jsonResponse({ success: true, migrated: migrateInitialStockData(data.employeeId) });
 
       // Приход
       case 'addArrival':
@@ -315,6 +324,83 @@ function deleteNomenclatureData(id) {
 
 function getPricesData() {
   return readSheetData('Цены');
+}
+
+// ==================== НАЧАЛЬНЫЕ ОСТАТКИ ====================
+
+function getInitialStockData(employeeId) {
+  const rows = readSheetData('Начальные остатки');
+  if (!employeeId) return rows;
+
+  const searchId = String(employeeId).trim();
+  return rows.filter(row => String(row['Сотрудник_ID'] ?? '').trim() === searchId);
+}
+
+function addInitialStockData(data) {
+  const positionsValue = data.items ?? data['Позиции'] ?? data['Позиции (JSON)'];
+  const positions = typeof positionsValue === 'string'
+    ? JSON.parse(positionsValue || '[]')
+    : positionsValue || [];
+  if (!Array.isArray(positions) || positions.length === 0) {
+    throw new Error('Не переданы позиции начальных остатков');
+  }
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Начальные остатки');
+  if (!sheet) throw new Error('Лист не найден: Начальные остатки');
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const employeeId = String(data['Сотрудник_ID'] ?? data.employeeId ?? '').trim();
+  const employeeName = data['ФИО'] ?? data['ФИО сотрудника'] ?? data.employeeName ?? '';
+  const employeeIdColumn = headers.indexOf('Сотрудник_ID');
+  if (employeeIdColumn === -1) throw new Error('Столбец "Сотрудник_ID" не найден');
+
+  const existingRows = sheet.getDataRange().getValues();
+  for (let i = existingRows.length - 1; i >= 1; i--) {
+    if (String(existingRows[i][employeeIdColumn]).trim() === employeeId) {
+      sheet.deleteRow(i + 1);
+    }
+  }
+
+  const baseId = data['ID'] || data.id || 'INITIAL-' + employeeId;
+  const rows = positions.map((item, index) => {
+    const nomenclatureId = item.nomenclatureId ?? item['Номенклатура_ID'] ?? item.id ?? '';
+    const rowData = {
+      'ID': baseId + '-' + (nomenclatureId || index + 1),
+      'Сотрудник_ID': employeeId,
+      'ФИО': employeeName,
+      'Номенклатура_ID': nomenclatureId,
+      'Название': item.name ?? item['Название'] ?? '',
+      'Количество': item.quantity ?? item['Количество'] ?? 0,
+      'Ед. изм.': item.unit ?? item['Ед. изм.'] ?? '',
+      'Дата': data['Дата'] ?? data.date ?? new Date(),
+      'Кем внесено': data['Кем внесено'] ?? employeeName,
+      'Период': data['Период'] ?? data['Месяц'] ?? data.month ?? '',
+      'Примечание': data['Примечание'] ?? data['Комментарий'] ?? ''
+    };
+    return headers.map(header => rowData[header] !== undefined ? rowData[header] : '');
+  });
+
+  sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, headers.length).setValues(rows);
+}
+
+function migrateInitialStockData(employeeId) {
+  const searchId = String(employeeId || '').trim();
+  if (!searchId) throw new Error('Не указан сотрудник');
+  const hasValidRows = getInitialStockData(searchId)
+    .some(row => String(row['Номенклатура_ID'] ?? '').trim() !== '');
+  if (hasValidRows) return 0;
+
+  const legacyRows = getArrivalsData().filter(row =>
+    String(row['Сотрудник_ID'] ?? '').trim() === searchId &&
+    String(row['Тип'] ?? '').trim().toLowerCase() === 'начальные остатки'
+  );
+
+  legacyRows.forEach(row => {
+    addInitialStockData(row);
+    deleteRow('Приход', row['ID']);
+  });
+
+  return legacyRows.length;
 }
 
 // ==================== ПРИХОД ====================
@@ -665,6 +751,7 @@ function setupDatabase() {
     'Сотрудники',
     'Номенклатура',
     'Цены',
+    'Начальные остатки',
     'Приход',
     'Расход',
     'Листы расхода',
@@ -680,6 +767,7 @@ function setupDatabase() {
     'Сотрудники': ['ID', 'Персональный номер', 'ФИО', 'Пароль (хэш)', 'Статус', 'Должность', 'Дата найма', 'Дата увольнения', 'Заблокирован', 'Телефон', 'Email', 'Дата регистрации', 'Последний вход', 'Примечание', 'Смена открыта'],
     'Номенклатура': ['ID', 'Название', 'Категория', 'Ед. измерения', 'Производитель', 'Количество в упаковке', 'Штрих-код', 'Актуальна', 'Дата создания', 'Примечание'],
     'Цены': ['ID', 'Номенклатура_ID', 'Название', 'Цена за ед. (₽)', 'Дата начала', 'Дата окончания', 'Кем изменено', 'Дата изменения', 'Примечание'],
+    'Начальные остатки': ['ID', 'Сотрудник_ID', 'ФИО', 'Номенклатура_ID', 'Название', 'Количество', 'Ед. изм.', 'Дата', 'Кем внесено', 'Период', 'Примечание'],
     'Приход': ['ID', 'Сотрудник_ID', 'ФИО сотрудника', 'Дата', 'Месяц', 'Сумма (₽)', 'Количество смен', 'Кем внесено', 'Тип', 'Комментарий', 'Позиции (JSON)', 'Дата внесения', 'Архив'],
     'Расход': ['ID', 'Сотрудник_ID', 'Дата внесения', 'Дата вызова', 'Месяц', 'Номенклатура_ID', 'Количество', 'Пациент ФИО', 'Пациент ДР', 'Вызов_ID'],
     'Листы расхода': ['ID', 'Сотрудник_ID', 'Сотрудник', 'Пациент', 'Дата рождения пациента', 'Дата', 'Месяц', 'Категория выезда', 'Название терапии', 'Стоимость терапии', 'Позиции (JSON)', 'Итого по препаратам', 'Архив', 'Дата создания'],
