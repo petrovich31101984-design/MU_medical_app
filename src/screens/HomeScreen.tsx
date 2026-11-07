@@ -2,14 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useDataStore } from '../store/dataStore';
 import { api } from '../api';
+import NetworkStatus from '../components/NetworkStatus';
 
 interface HomeScreenProps {
   onNavigate: (screen: string) => void;
 }
 
 export default function HomeScreen({ onNavigate }: HomeScreenProps) {
-  const { employee, logout } = useAuthStore();
-  const { loadAnnouncements, announcements } = useDataStore();
+  const { employee, logout, updateShift } = useAuthStore();
+  const { announcements, messages, loadMessages } = useDataStore();
   const [shiftStatus, setShiftStatus] = useState(false);
   const [shiftMessage, setShiftMessage] = useState('');
 
@@ -18,7 +19,8 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
       // Проверяем статус смены на основе status или shiftOpen
       const isOpen = employee.status === 'Активен' || employee.shiftOpen === true;
       setShiftStatus(isOpen);
-      loadAnnouncements();
+      const interval = setInterval(() => loadMessages(employee.id), 5000);
+      return () => clearInterval(interval);
     }
   }, [employee]);
 
@@ -31,9 +33,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
         if (result.success) {
           setShiftStatus(false);
           setShiftMessage('Смена закрыта');
-          // Обновляем данные сотрудника в localStorage
-          const updatedEmployee = { ...employee, shiftOpen: false, status: 'Неактивен' };
-          localStorage.setItem('employee', JSON.stringify(updatedEmployee));
+          updateShift(false);
         } else {
           setShiftMessage('Не удалось закрыть смену');
         }
@@ -42,9 +42,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
         if (result.success) {
           setShiftStatus(true);
           setShiftMessage('Смена открыта');
-          // Обновляем данные сотрудника в localStorage
-          const updatedEmployee = { ...employee, shiftOpen: true, status: 'Активен' };
-          localStorage.setItem('employee', JSON.stringify(updatedEmployee));
+          updateShift(true);
         } else {
           setShiftMessage('Не удалось открыть смену');
         }
@@ -56,7 +54,9 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
     }
   };
 
-  const unreadMessages = 0;
+  const unreadMessages = messages.filter(message =>
+    message.toId === employee?.id && !message.read
+  ).length;
   
   // Функция для проверки активности объявления (поддержка разных форматов)
   const isAnnouncementActive = (announcement: any) => {
@@ -77,6 +77,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
           <p className="text-sm text-slate-500">
             Здравствуйте, {employee?.fullName ? employee.fullName.split(' ').slice(1, 3).join(' ') : 'Сотрудник'}
           </p>
+          <NetworkStatus />
         </div>
         <button
           onClick={logout}
@@ -126,15 +127,18 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
       {/* Menu */}
       <div className="p-5 space-y-3">
         <button
-          className="bg-white w-full p-4 rounded-xl border border-slate-200 flex items-center hover:bg-slate-50 transition-colors"
+          className="bg-white w-full p-4 rounded-xl border border-slate-200 flex items-center hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:hover:bg-white disabled:cursor-not-allowed"
           onClick={() => onNavigate('ExpenseSheet')}
+          disabled={!shiftStatus}
         >
           <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mr-4 text-2xl">
             📝
           </div>
           <div className="text-left flex-1">
             <p className="text-base font-bold text-slate-800">Лист расхода</p>
-            <p className="text-sm text-slate-500 mt-1">Создать новый лист расхода</p>
+            <p className="text-sm text-slate-500 mt-1">
+              {shiftStatus ? 'Создать новый лист расхода' : 'Откройте смену для создания листа расхода'}
+            </p>
           </div>
         </button>
 

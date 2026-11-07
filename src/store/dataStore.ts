@@ -2,6 +2,20 @@ import { create } from 'zustand';
 import { Nomenclature, ExpenseSheet, ChatMessage, Announcement } from '../types';
 import { api } from '../api';
 
+const readCache = <T>(key: string): T[] => {
+  try {
+    const value = localStorage.getItem(`cache_${key}`);
+    const data = value ? JSON.parse(value) : [];
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeCache = (key: string, data: unknown[]) => {
+  localStorage.setItem(`cache_${key}`, JSON.stringify(data));
+};
+
 interface DataStore {
   nomenclature: Nomenclature[];
   expenseSheets: ExpenseSheet[];
@@ -14,6 +28,7 @@ interface DataStore {
   loadMessages: (employeeId: string) => Promise<void>;
   loadAnnouncements: () => Promise<void>;
   createExpenseSheet: (sheet: Omit<ExpenseSheet, 'id'>) => Promise<boolean>;
+  updateExpenseSheet: (sheet: ExpenseSheet) => Promise<boolean>;
   sendMessage: (message: Omit<ChatMessage, 'id' | 'date'>) => Promise<boolean>;
   editMessage: (messageId: string, newText: string) => Promise<boolean>;
   deleteMessage: (messageId: string) => Promise<boolean>;
@@ -27,17 +42,13 @@ export const useDataStore = create<DataStore>((set, get) => ({
   loading: false,
 
   loadNomenclature: async () => {
-    console.log('=== LOADING NOMENCLATURE ===');
     set({ loading: true });
     const response = await api.getNomenclature();
-    console.log('Nomenclature response:', response);
-    
     if (response.success && response.data) {
-      console.log('Nomenclature loaded:', response.data.length, 'items');
+      writeCache('nomenclature', response.data);
       set({ nomenclature: response.data, loading: false });
     } else {
-      console.error('Failed to load nomenclature:', response.error);
-      set({ loading: false });
+      set({ nomenclature: readCache<Nomenclature>('nomenclature'), loading: false });
     }
   },
 
@@ -45,9 +56,10 @@ export const useDataStore = create<DataStore>((set, get) => ({
     set({ loading: true });
     const response = await api.getEmployeeExpenseSheets(employeeId);
     if (response.success && response.data) {
+      writeCache(`expenseSheets_${employeeId}`, response.data);
       set({ expenseSheets: response.data, loading: false });
     } else {
-      set({ loading: false });
+      set({ expenseSheets: readCache<ExpenseSheet>(`expenseSheets_${employeeId}`), loading: false });
     }
   },
 
@@ -55,38 +67,29 @@ export const useDataStore = create<DataStore>((set, get) => ({
     set({ loading: true });
     const response = await api.getEmployeeMessages(employeeId);
     if (response.success && response.data) {
-      // Фильтруем временные сообщения (с ID начинающимся на 'temp_')
       const serverMessages = response.data;
       set(state => {
-        // Сохраняем временные сообщения из локального состояния
         const tempMessages = state.messages.filter(msg => msg.id.startsWith('temp_'));
-        // Объединяем серверные сообщения с временными
         const allMessages = [...serverMessages, ...tempMessages];
+        writeCache('messages', allMessages);
         return { messages: allMessages, loading: false };
       });
     } else {
-      set({ loading: false });
+      set({ messages: readCache<ChatMessage>('messages'), loading: false });
     }
   },
 
   loadAnnouncements: async () => {
     set({ loading: true });
     const response = await api.getAnnouncements();
-    console.log('=== LOADING ANNOUNCEMENTS ===');
-    console.log('Response:', response);
-    
     if (response.success && response.data) {
-      // Нормализуем данные объявлений
       const normalizedAnnouncements = response.data.map((ann: any) => {
-        console.log('Announcement data:', ann);
-        
-        // Определяем активность объявления
-        const isActive = ann.active === true || 
-                        ann.active === 'ДА' || 
-                        ann['Активно'] === 'ДА' || 
+        const isActive = ann.active === true ||
+                        ann.active === 'ДА' ||
+                        ann['Активно'] === 'ДА' ||
                         ann['Активно'] === true ||
                         ann['Активно'] === 'true';
-        
+
         return {
           ...ann,
           id: ann.id || ann['ID'] || `ann-${Math.random()}`,
@@ -97,93 +100,85 @@ export const useDataStore = create<DataStore>((set, get) => ({
           active: isActive
         };
       });
-      
-      console.log('Normalized announcements:', normalizedAnnouncements);
+      writeCache('announcements', normalizedAnnouncements);
       set({ announcements: normalizedAnnouncements, loading: false });
     } else {
-      console.error('Failed to load announcements:', response.error);
-      set({ loading: false });
+      set({ announcements: readCache<Announcement>('announcements'), loading: false });
     }
   },
 
   createExpenseSheet: async (sheet) => {
-    console.log('=== DATA STORE: Creating expense sheet ===');
-    console.log('Sheet data:', sheet);
-    
     const response = await api.createExpenseSheet(sheet);
-    console.log('API response:', response);
-    
-    if (response.success) {
-      console.log('Expense sheet created successfully');
-      const employeeId = sheet.employeeId;
-      await get().loadExpenseSheets(employeeId);
-      return true;
+    if (!response.success) return false;
+
+    if (response.queued) {
+      set(state => {
+        const localSheet = response.data || { ...sheet, id: `SHEET-${Date.now()}` };
+        const expenseSheets = [...state.expenseSheets, localSheet];
+        writeCache(`expenseSheets_${sheet.employeeId}`, expenseSheets);
+        return { expenseSheets };
+      });
     } else {
-      console.error('Failed to create expense sheet:', response.error);
-      return false;
+      await get().loadExpenseSheets(sheet.employeeId);
     }
+    return true;
+  },
+
+  updateExpenseSheet: async (sheet) => {
+    const response = await api.updateExpenseSheet(sheet);
+    if (!response.success) return false;
+
+    set(state => {
+      const expenseSheets = state.expenseSheets.map(item => item.id === sheet.id ? sheet : item);
+      writeCache(`expenseSheets_${sheet.employeeId}`, expenseSheets);
+      return { expenseSheets };
+    });
+    if (!response.queued) await get().loadExpenseSheets(sheet.employeeId);
+    return true;
   },
 
   sendMessage: async (message) => {
-    console.log('=== DATA STORE: Sending message ===');
-    console.log('Message:', message);
-    
-    // Оптимистичное обновление - добавляем сообщение сразу в локальное состояние
     const newMessage: ChatMessage = {
       ...message,
-      id: `temp_${Date.now()}`,
+      id: `MSG-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       date: new Date().toISOString(),
     };
-    
-    console.log('Adding message to local state immediately');
-    set(state => ({
-      messages: [...state.messages, newMessage]
-    }));
-    
-    const response = await api.sendMessage(message);
-    console.log('API response:', response);
-    
-    if (response.success) {
-      console.log('Message sent successfully to server');
-      // НЕ перезагружаем сообщения с сервера, чтобы не удалять локальное сообщение
-      // Сервер обработает сообщение в фоне
-      return true;
-    } else {
-      console.error('Failed to send message:', response.error);
-      return false;
+    set(state => {
+      const messages = [...state.messages, newMessage];
+      writeCache('messages', messages);
+      return { messages };
+    });
+
+    const response = await api.sendMessage(newMessage);
+    if (!response.success) {
+      set(state => {
+        const messages = state.messages.filter(item => item.id !== newMessage.id);
+        writeCache('messages', messages);
+        return { messages };
+      });
     }
+    return response.success;
   },
 
   editMessage: async (messageId: string, newText: string) => {
-    console.log('=== DATA STORE: Editing message ===');
-    console.log('Message ID:', messageId);
-    console.log('New text:', newText);
-    
-    // Оптимистичное обновление
-    set(state => ({
-      messages: state.messages.map(msg => 
+    set(state => {
+      const messages = state.messages.map(msg =>
         msg.id === messageId ? { ...msg, text: newText } : msg
-      )
-    }));
-    
+      );
+      writeCache('messages', messages);
+      return { messages };
+    });
     const response = await api.editMessage(messageId, newText);
-    console.log('API response:', response);
-    
     return response.success;
   },
 
   deleteMessage: async (messageId: string) => {
-    console.log('=== DATA STORE: Deleting message ===');
-    console.log('Message ID:', messageId);
-    
-    // Оптимистичное удаление
-    set(state => ({
-      messages: state.messages.filter(msg => msg.id !== messageId)
-    }));
-    
+    set(state => {
+      const messages = state.messages.filter(msg => msg.id !== messageId);
+      writeCache('messages', messages);
+      return { messages };
+    });
     const response = await api.deleteMessage(messageId);
-    console.log('API response:', response);
-    
     return response.success;
   },
 }));

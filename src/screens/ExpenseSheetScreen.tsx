@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useDataStore } from '../store/dataStore';
-import { ExpenseItem, Nomenclature } from '../types';
+import { ExpenseItem, ExpenseSheet, Nomenclature } from '../types';
 
 interface ExpenseSheetScreenProps {
   onBack: () => void;
+  sheet?: ExpenseSheet;
 }
 
 const formatBirthDate = (value: string) => {
@@ -16,16 +17,23 @@ const formatBirthDate = (value: string) => {
   return `${digits.slice(0, 2)}.${digits.slice(2, 4)}.${digits.slice(4)}`;
 };
 
-export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) {
+const formatStoredBirthDate = (value: string) => {
+  const isoDate = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoDate) return `${isoDate[3]}.${isoDate[2]}.${isoDate[1]}`;
+  return formatBirthDate(value);
+};
+
+export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreenProps) {
   const { employee } = useAuthStore();
-  const { nomenclature, loading: nomenclatureLoading, loadNomenclature, createExpenseSheet } = useDataStore();
-  
-  const [patientName, setPatientName] = useState('');
-  const [patientBirthDate, setPatientBirthDate] = useState('');
-  const [callCategory, setCallCategory] = useState('');
-  const [therapyNames, setTherapyNames] = useState<string[]>(['']);
-  const [therapyCost, setTherapyCost] = useState('');
-  const [items, setItems] = useState<ExpenseItem[]>([]);
+  const { nomenclature, loading: nomenclatureLoading, loadNomenclature, createExpenseSheet, updateExpenseSheet } = useDataStore();
+  const isCreationBlocked = !sheet && !(employee?.status === 'Активен' || employee?.shiftOpen === true);
+
+  const [patientName, setPatientName] = useState(sheet?.patientName || '');
+  const [patientBirthDate, setPatientBirthDate] = useState(formatStoredBirthDate(sheet?.patientBirthDate || ''));
+  const [callCategory, setCallCategory] = useState(sheet?.callCategory || '');
+  const [therapyNames, setTherapyNames] = useState<string[]>(sheet?.therapyName ? sheet.therapyName.split(', ') : ['']);
+  const [therapyCost, setTherapyCost] = useState(sheet ? String(sheet.therapyCost) : '');
+  const [items, setItems] = useState<ExpenseItem[]>(sheet?.items || []);
   const [loading, setLoading] = useState(false);
   const [showNomenclaturePicker, setShowNomenclaturePicker] = useState(false);
   const [success, setSuccess] = useState('');
@@ -90,6 +98,11 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
   const totalAmount = items.reduce((sum, item) => sum + item.total, 0);
 
   const handleSubmit = async () => {
+    if (isCreationBlocked) {
+      setError('Для создания листа расхода откройте смену');
+      return;
+    }
+
     if (!patientName.trim()) {
       setError('Введите ФИО пациента');
       return;
@@ -105,32 +118,35 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
     try {
       const now = new Date();
       const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      
-      const result = await createExpenseSheet({
+      const sheetData = {
         employeeId: employee!.id,
         employeeName: employee!.fullName,
-        patientName,
+        patientName: patientName.trim(),
         patientBirthDate,
-        date: now.toISOString(),
-        month,
+        date: sheet?.date || now.toISOString(),
+        month: sheet?.month || month,
         callCategory,
         therapyName: therapyNames.join(', '),
         therapyCost: parseFloat(therapyCost) || 0,
         items,
         totalAmount,
-        archived: false,
-      });
-
-      console.log('Create expense sheet result:', result);
+        archived: sheet?.archived || false,
+      };
+      const result = sheet
+        ? await updateExpenseSheet({ ...sheet, ...sheetData })
+        : await createExpenseSheet(sheetData);
 
       if (result) {
-        setSuccess('Лист расхода создан!');
+        setSuccess(sheet
+          ? 'Изменения сохранены. При отсутствии сети они будут отправлены автоматически.'
+          : 'Лист расхода сохранён. При отсутствии сети он будет отправлен автоматически после её восстановления.'
+        );
         setTimeout(() => onBack(), 2000);
       } else {
-        setError('Не удалось создать лист расхода');
+        setError(sheet ? 'Не удалось сохранить изменения' : 'Не удалось создать лист расхода');
       }
     } catch (err) {
-      setError('Произошла ошибка при создании листа расхода');
+      setError(sheet ? 'Произошла ошибка при сохранении изменений' : 'Произошла ошибка при создании листа расхода');
     } finally {
       setLoading(false);
     }
@@ -145,7 +161,9 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
         >
           ← Назад
         </button>
-        <h1 className="text-lg font-bold text-slate-800 absolute left-1/2 transform -translate-x-1/2">Лист расхода</h1>
+        <h1 className="text-lg font-bold text-slate-800 absolute left-1/2 transform -translate-x-1/2">
+          {sheet ? 'Редактирование' : 'Лист расхода'}
+        </h1>
       </div>
 
       <div className="p-5 max-w-lg mx-auto">
@@ -357,9 +375,15 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
             <div key={item.nomenclatureId} className="bg-slate-50 p-3 rounded-lg mb-2 border border-slate-200">
               <div className="flex justify-between items-center">
                 <p className="text-sm text-slate-700 flex-1">{item.name}</p>
-                <span className="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded ml-2">
-                  {item.quantity} шт.
-                </span>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  aria-label={`Количество: ${item.name}`}
+                  value={item.quantity}
+                  onChange={event => updateQuantity(item.nomenclatureId, parseInt(event.target.value) || 0)}
+                  className="w-20 text-sm font-medium text-blue-600 bg-blue-50 px-3 py-2 rounded ml-2 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
             </div>
           ))}
@@ -378,10 +402,16 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
           </div>
         )}
 
+        {isCreationBlocked && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+            <p className="text-sm text-amber-700">Для создания листа расхода откройте смену на главном экране.</p>
+          </div>
+        )}
+
         <button
           className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-lg transition-colors disabled:opacity-50"
           onClick={handleSubmit}
-          disabled={loading}
+          disabled={loading || isCreationBlocked || !patientName.trim() || items.length === 0}
         >
           {loading ? (
             <span className="flex items-center justify-center">
@@ -389,10 +419,10 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
-              Создание...
+              {sheet ? 'Сохранение...' : 'Создание...'}
             </span>
           ) : (
-            'Создать лист расхода'
+            sheet ? 'Сохранить изменения' : 'Создать лист расхода'
           )}
         </button>
       </div>

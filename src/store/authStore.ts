@@ -5,6 +5,7 @@ interface AuthStore extends AuthState {
   login: (employee: Employee) => Promise<void>;
   logout: () => Promise<void>;
   loadSession: () => Promise<void>;
+  updateShift: (shiftOpen: boolean) => void;
 }
 
 export const useAuthStore = create<AuthStore>((set) => ({
@@ -50,5 +51,19 @@ export const useAuthStore = create<AuthStore>((set) => ({
     } catch (error) {
       console.error('Ошибка загрузки сессии:', error);
     }
+  },
+
+  updateShift: (shiftOpen: boolean) => {
+    set(state => {
+      if (!state.employee) return state;
+
+      const employee: Employee = {
+        ...state.employee,
+        shiftOpen,
+        status: shiftOpen ? 'Активен' : 'Неактивен',
+      };
+      localStorage.setItem('employee', JSON.stringify(employee));
+      return { employee };
+    });
   },
 }));

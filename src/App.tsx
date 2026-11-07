@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from './store/authStore';
+import { useDataStore } from './store/dataStore';
 import { api } from './api';
+import { ExpenseSheet } from './types';
 
 // Экраны
 import LoginScreen from './screens/LoginScreen';
@@ -19,10 +21,12 @@ type InitialStockStatus = 'checking' | 'required' | 'completed' | 'error';
 
 export default function App() {
   const { isAuthenticated, employee, loadSession, logout } = useAuthStore();
+  const { loadNomenclature, loadExpenseSheets, loadMessages, loadAnnouncements } = useDataStore();
   const [isConfigured, setIsConfigured] = useState<boolean | null>(null);
   const [currentScreen, setCurrentScreen] = useState<Screen>('Login');
   const [initialStockStatus, setInitialStockStatus] = useState<InitialStockStatus>('checking');
   const [stockCheckAttempt, setStockCheckAttempt] = useState(0);
+  const [editingExpenseSheet, setEditingExpenseSheet] = useState<ExpenseSheet | null>(null);
 
   useEffect(() => {
     // Инициализация API
@@ -58,22 +62,39 @@ export default function App() {
     let cancelled = false;
     setInitialStockStatus('checking');
 
-    api.hasInitialStock(employee.id).then(response => {
-      if (cancelled) return;
+    const loadApplication = async () => {
+      try {
+        const response = await api.hasInitialStock(employee.id);
+        if (cancelled) return;
 
-      if (!response.success) {
-        setInitialStockStatus('error');
-        return;
-      }
+        if (!response.success) {
+          setInitialStockStatus('error');
+          return;
+        }
 
-      if (response.data) {
+        if (!response.data) {
+          setInitialStockStatus('required');
+          setCurrentScreen('InitialStock');
+          return;
+        }
+
+        await Promise.all([
+          loadNomenclature(),
+          loadExpenseSheets(employee.id),
+          loadMessages(employee.id),
+          loadAnnouncements(),
+        ]);
+        if (cancelled) return;
+
         setInitialStockStatus('completed');
         setCurrentScreen(current => current === 'Login' || current === 'InitialStock' ? 'Home' : current);
-      } else {
-        setInitialStockStatus('required');
-        setCurrentScreen('InitialStock');
+      } catch (error) {
+        console.error('Application loading error:', error);
+        if (!cancelled) setInitialStockStatus('error');
       }
-    });
+    };
+
+    loadApplication();
 
     return () => {
       cancelled = true;
@@ -90,6 +111,7 @@ export default function App() {
   };
 
   const handleNavigate = (screen: string) => {
+    if (screen === 'ExpenseSheet') setEditingExpenseSheet(null);
     setCurrentScreen(screen as Screen);
   };
 
@@ -97,8 +119,18 @@ export default function App() {
     setCurrentScreen('Home');
   };
 
+  const handleEditExpenseSheet = (sheet: ExpenseSheet) => {
+    setEditingExpenseSheet(sheet);
+    setCurrentScreen('ExpenseSheet');
+  };
+
+  const handleExpenseSheetBack = () => {
+    setCurrentScreen(editingExpenseSheet ? 'Profile' : 'Home');
+    setEditingExpenseSheet(null);
+  };
+
   // Если конфигурация ещё не загружена, показываем загрузку
-  if (isConfigured === null) {
+  if (isConfigured === null || (isConfigured === true && isAuthenticated && initialStockStatus === 'checking')) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="flex flex-col items-center">
@@ -149,19 +181,11 @@ export default function App() {
     return <SetupScreen onConnected={handleConnected} onBack={handleBackToLogin} />;
   }
 
-  if (isAuthenticated && initialStockStatus === 'checking') {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <p className="text-slate-500">Проверка начальных остатков...</p>
-      </div>
-    );
-  }
-
   if (isAuthenticated && initialStockStatus === 'error') {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center p-5">
         <div className="max-w-sm w-full text-center">
-          <h1 className="text-xl font-bold text-slate-800 mb-3">Не удалось проверить остатки</h1>
+          <h1 className="text-xl font-bold text-slate-800 mb-3">Не удалось загрузить данные</h1>
           <p className="text-slate-500 mb-6">Проверьте подключение к базе данных и повторите попытку.</p>
           <button
             onClick={() => setStockCheckAttempt(attempt => attempt + 1)}
@@ -179,10 +203,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-slate-50 max-w-lg mx-auto shadow-xl">
         <InitialStockScreen
-          onComplete={() => {
-            setInitialStockStatus('completed');
-            setCurrentScreen('Home');
-          }}
+          onComplete={() => setStockCheckAttempt(attempt => attempt + 1)}
         />
       </div>
     );
@@ -196,13 +217,13 @@ export default function App() {
       case 'Home':
         return <HomeScreen onNavigate={handleNavigate} />;
       case 'ExpenseSheet':
-        return <ExpenseSheetScreen onBack={handleBack} />;
+        return <ExpenseSheetScreen onBack={handleExpenseSheetBack} sheet={editingExpenseSheet || undefined} />;
       case 'Messages':
         return <MessagesScreen onBack={handleBack} />;
       case 'Announcements':
         return <AnnouncementsScreen onBack={handleBack} />;
       case 'Profile':
-        return <ProfileScreen onBack={handleBack} />;
+        return <ProfileScreen onBack={handleBack} onEditExpenseSheet={handleEditExpenseSheet} />;
       case 'Return':
         return <ReturnScreen onBack={handleBack} />;
       case 'Settings':
