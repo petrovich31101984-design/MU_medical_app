@@ -30,6 +30,7 @@ interface DataStore {
   createExpenseSheet: (sheet: Omit<ExpenseSheet, 'id'>) => Promise<boolean>;
   updateExpenseSheet: (sheet: ExpenseSheet) => Promise<boolean>;
   sendMessage: (message: Omit<ChatMessage, 'id' | 'date'>) => Promise<boolean>;
+  markMessagesAsRead: (messageIds: string[]) => Promise<void>;
   editMessage: (messageId: string, newText: string) => Promise<boolean>;
   deleteMessage: (messageId: string) => Promise<boolean>;
 }
@@ -69,8 +70,14 @@ export const useDataStore = create<DataStore>((set, get) => ({
     if (response.success && response.data) {
       const serverMessages = response.data;
       set(state => {
+        const locallyReadIds = new Set(
+          state.messages.filter(message => message.read).map(message => message.id)
+        );
+        const mergedServerMessages = serverMessages.map(message =>
+          locallyReadIds.has(message.id) ? { ...message, read: true } : message
+        );
         const tempMessages = state.messages.filter(msg => msg.id.startsWith('temp_'));
-        const allMessages = [...serverMessages, ...tempMessages];
+        const allMessages = [...mergedServerMessages, ...tempMessages];
         writeCache('messages', allMessages);
         return { messages: allMessages, loading: false };
       });
@@ -158,6 +165,19 @@ export const useDataStore = create<DataStore>((set, get) => ({
       });
     }
     return response.success;
+  },
+
+  markMessagesAsRead: async (messageIds) => {
+    const ids = new Set(messageIds);
+    set(state => {
+      const messages = state.messages.map(message =>
+        ids.has(message.id) ? { ...message, read: true } : message
+      );
+      writeCache('messages', messages);
+      return { messages };
+    });
+
+    await Promise.all(messageIds.map(messageId => api.markMessageAsRead(messageId)));
   },
 
   editMessage: async (messageId: string, newText: string) => {

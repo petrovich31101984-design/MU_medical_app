@@ -9,7 +9,7 @@ interface MessagesScreenProps {
 
 export default function MessagesScreen({ onBack }: MessagesScreenProps) {
   const { employee } = useAuthStore();
-  const { messages, loadMessages, sendMessage, editMessage, deleteMessage } = useDataStore();
+  const { messages, loadMessages, sendMessage, markMessagesAsRead, editMessage, deleteMessage } = useDataStore();
   const [newMessage, setNewMessage] = useState('');
   const [selectedRecipient, setSelectedRecipient] = useState<'MGR' | 'STORE'>('MGR');
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -35,6 +35,20 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
       return () => clearInterval(interval);
     }
   }, [employee]);
+
+  useEffect(() => {
+    if (!employee) return;
+
+    const unreadIds = messages
+      .filter(message =>
+        message.toId === employee.id &&
+        message.fromId === selectedRecipient &&
+        !message.read
+      )
+      .map(message => message.id);
+
+    if (unreadIds.length > 0) void markMessagesAsRead(unreadIds);
+  }, [employee?.id, selectedRecipient, messages, markMessagesAsRead]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

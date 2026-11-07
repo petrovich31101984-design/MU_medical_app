@@ -294,6 +294,10 @@ class ApiService {
     return this.saveMutation('addChatMessage', message);
   }
 
+  async markMessageAsRead(messageId: string): Promise<ApiResponse<void>> {
+    return this.saveMutation('updateChatMessage', { id: messageId, 'Прочитано': 'ДА' });
+  }
+
   async editMessage(messageId: string, newText: string): Promise<ApiResponse<void>> {
     return this.saveMutation('editChatMessage', { id: messageId, text: newText });
   }
