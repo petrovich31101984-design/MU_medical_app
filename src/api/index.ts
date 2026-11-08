@@ -343,11 +343,37 @@ class ApiService {
     });
   }
 
+  async getEmployeeWorkState(employeeId: string): Promise<ApiResponse<{ shiftOpen: boolean; blocked: boolean }>> {
+    try {
+      const response = await this.client.get(`${this.scriptUrl}?action=getEmployees`);
+      const employees = Array.isArray(response.data) ? response.data : response.data?.data;
+      if (!Array.isArray(employees)) {
+        return { success: false, error: 'Сервер вернул некорректный список сотрудников' };
+      }
+
+      const employee = employees.find(item =>
+        String(item['ID'] ?? item.id ?? '').trim() === String(employeeId).trim()
+      );
+      if (!employee) {
+        return { success: false, error: 'Сотрудник не найден' };
+      }
+
+      return {
+        success: true,
+        data: {
+          shiftOpen: employee['Смена открыта'] === 'ДА' || employee['Смена открыта'] === true,
+          blocked: employee['Заблокирован'] === 'ДА' || employee['Заблокирован'] === true,
+        },
+      };
+    } catch (error) {
+      return { success: false, error: 'Ошибка обновления статуса сотрудника' };
+    }
+  }
+
   async openShift(employeeId: string): Promise<ApiResponse<void>> {
     return this.saveMutation('updateEmployeeShift', {
       id: employeeId,
       shiftOpen: true,
-      status: 'Активен',
     });
   }
 
@@ -355,7 +381,6 @@ class ApiService {
     return this.saveMutation('updateEmployeeShift', {
       id: employeeId,
       shiftOpen: false,
-      status: 'Неактивен',
     });
   }
 }

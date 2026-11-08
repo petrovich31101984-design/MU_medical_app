@@ -15,14 +15,29 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
   const [shiftMessage, setShiftMessage] = useState('');
 
   useEffect(() => {
-    if (employee) {
-      // Проверяем статус смены на основе status или shiftOpen
-      const isOpen = employee.status === 'Активен' || employee.shiftOpen === true;
-      setShiftStatus(isOpen);
-      const interval = setInterval(() => loadMessages(employee.id), 5000);
-      return () => clearInterval(interval);
-    }
-  }, [employee]);
+    if (!employee) return;
+
+    const refreshWorkState = async () => {
+      const response = await api.getEmployeeWorkState(employee.id);
+      if (!response.success || !response.data) return;
+
+      if (response.data.blocked) {
+        await logout();
+        return;
+      }
+
+      setShiftStatus(response.data.shiftOpen);
+      updateShift(response.data.shiftOpen);
+    };
+
+    setShiftStatus(employee.shiftOpen === true);
+    void refreshWorkState();
+    const interval = setInterval(() => {
+      void loadMessages(employee.id);
+      void refreshWorkState();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [employee?.id]);
 
   const handleToggleShift = async () => {
     if (!employee) return;

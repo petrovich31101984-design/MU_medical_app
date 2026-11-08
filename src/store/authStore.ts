@@ -55,12 +55,11 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
   updateShift: (shiftOpen: boolean) => {
     set(state => {
-      if (!state.employee) return state;
+      if (!state.employee || state.employee.shiftOpen === shiftOpen) return state;
 
       const employee: Employee = {
         ...state.employee,
         shiftOpen,
-        status: shiftOpen ? 'Активен' : 'Неактивен',
       };
       localStorage.setItem('employee', JSON.stringify(employee));
       return { employee };
