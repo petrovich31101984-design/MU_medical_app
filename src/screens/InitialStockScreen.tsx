@@ -38,7 +38,7 @@ const getStockCategory = (value: unknown): StockCategory | '' => {
   if (category === 'лс' || category.startsWith('лс ') || category.includes('лекарствен')) {
     return 'medicines';
   }
-  if (category === 'расходники' || category === 'расходные материалы') {
+  if (category === 'расходники' || category === 'расходный материал' || category === 'расходные материалы') {
     return 'supplies';
   }
   if (category === 'оборудование') {
