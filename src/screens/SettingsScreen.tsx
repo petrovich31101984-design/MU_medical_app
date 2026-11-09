@@ -10,7 +10,6 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
   const [testing, setTesting] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error'>('success');
-  const [showLoading, setShowLoading] = useState(false);
 
   const handleTestConnection = async () => {
     if (!scriptUrl.trim()) {
@@ -46,59 +45,6 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
       window.location.reload();
     }
   };
-
-  const handleTestLoading = () => {
-    setShowLoading(true);
-    setTimeout(() => {
-      setShowLoading(false);
-    }, 3000);
-  };
-
-  if (showLoading) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="flex flex-col items-center">
-          <div className="relative w-32 h-32 mb-4">
-            {/* Логотип в центре с мерцанием */}
-            <img
-              src="https://raw.githubusercontent.com/petrovich31101984-design/MU_medical_app/creating-a-project-from-github-c0204/public/logo.png"
-              alt="АлкоСпас"
-              className="w-24 h-24 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-2xl animate-pulse"
-            />
-            
-            {/* SVG с двумя дугами */}
-            <svg className="absolute inset-0 w-full h-full animate-spin" style={{ animationDuration: '2s' }} viewBox="0 0 128 128">
-              {/* Синяя дуга - 150° */}
-              <circle
-                cx="64"
-                cy="64"
-                r="56"
-                fill="none"
-                stroke="#2563eb"
-                strokeWidth="4"
-                strokeDasharray="146.6 205.3"
-                strokeDashoffset="0"
-                strokeLinecap="round"
-              />
-              {/* Красная дуга - 150° (разрыв 30°) */}
-              <circle
-                cx="64"
-                cy="64"
-                r="56"
-                fill="none"
-                stroke="#dc2626"
-                strokeWidth="4"
-                strokeDasharray="146.6 205.3"
-                strokeDashoffset="-175.9"
-                strokeLinecap="round"
-              />
-            </svg>
-          </div>
-          <p className="text-slate-500">Загрузка...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -174,32 +120,13 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
           </p>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-slate-200 mb-5">
-          <h2 className="text-lg font-bold text-slate-800 mb-4">Тестирование</h2>
-          
-          <button
-            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg transition-colors"
-            onClick={handleTestLoading}
-          >
-            Тест загрузочного окна
-          </button>
-          <p className="text-xs text-slate-500 mt-2 text-center">
-            Показать загрузочное окно на 3 секунды
-          </p>
-        </div>
-
         <div className="bg-white p-5 rounded-xl border border-slate-200">
           <h2 className="text-lg font-bold text-slate-800 mb-4">Информация о приложении</h2>
           
           <div className="space-y-3">
             <div className="flex justify-between items-center py-2 border-b border-slate-100">
               <span className="text-sm text-slate-500">Название</span>
-              <span className="text-sm text-slate-800 font-medium">АлкоСпас</span>
-            </div>
-            
-            <div className="flex justify-between items-center py-2 border-b border-slate-100">
-              <span className="text-sm text-slate-500">Версия</span>
-              <span className="text-sm text-green-600 font-medium">v. 0.1</span>
+              <span className="text-sm text-slate-800 font-medium">АлкоСпас СМУм</span>
             </div>
             
             <div className="flex justify-between items-center py-2 border-b border-slate-100">
@@ -207,14 +134,9 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
               <span className="text-sm text-slate-800 font-medium">Веб-приложение</span>
             </div>
             
-            <div className="flex justify-between items-center py-2 border-b border-slate-100">
-              <span className="text-sm text-slate-500">Назначение</span>
-              <span className="text-sm text-slate-800 font-medium">Сотрудник</span>
-            </div>
-            
             <div className="flex justify-between items-center py-2">
-              <span className="text-sm text-slate-500">Разработка</span>
-              <span className="text-sm text-slate-800 font-medium">Выездная медицинская помощь</span>
+              <span className="text-sm text-slate-500">Версия</span>
+              <span className="text-sm text-green-600 font-medium">v. 0.1</span>
             </div>
           </div>
         </div>

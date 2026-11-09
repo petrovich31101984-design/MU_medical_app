@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from './store/authStore';
+import { useDataStore } from './store/dataStore';
 import { api } from './api';
+import { ExpenseSheet } from './types';
 
 // Экраны
 import LoginScreen from './screens/LoginScreen';
@@ -12,13 +14,19 @@ import ProfileScreen from './screens/ProfileScreen';
 import SetupScreen from './screens/SetupScreen';
 import ReturnScreen from './screens/ReturnScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import InitialStockScreen from './screens/InitialStockScreen';
 
-type Screen = 'Setup' | 'Login' | 'Home' | 'ExpenseSheet' | 'Messages' | 'Announcements' | 'Profile' | 'Return' | 'Settings';
+type Screen = 'Setup' | 'Login' | 'Home' | 'ExpenseSheet' | 'Messages' | 'Announcements' | 'Profile' | 'Return' | 'Settings' | 'InitialStock';
+type InitialStockStatus = 'checking' | 'required' | 'completed' | 'error';
 
 export default function App() {
-  const { isAuthenticated, loadSession } = useAuthStore();
+  const { isAuthenticated, employee, loadSession, logout } = useAuthStore();
+  const { loadNomenclature, loadExpenseSheets, loadMessages, loadAnnouncements } = useDataStore();
   const [isConfigured, setIsConfigured] = useState<boolean | null>(null);
   const [currentScreen, setCurrentScreen] = useState<Screen>('Login');
+  const [initialStockStatus, setInitialStockStatus] = useState<InitialStockStatus>('checking');
+  const [stockCheckAttempt, setStockCheckAttempt] = useState(0);
+  const [editingExpenseSheet, setEditingExpenseSheet] = useState<ExpenseSheet | null>(null);
 
   useEffect(() => {
     // Инициализация API
@@ -41,10 +49,57 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (isConfigured === true && currentScreen !== 'Setup') {
-      setCurrentScreen(isAuthenticated ? 'Home' : 'Login');
+    if (isConfigured !== true) return;
+
+    if (!isAuthenticated) {
+      setInitialStockStatus('checking');
+      setCurrentScreen('Login');
+      return;
     }
-  }, [isAuthenticated, isConfigured]);
+
+    if (!employee) return;
+
+    let cancelled = false;
+    setInitialStockStatus('checking');
+
+    const loadApplication = async () => {
+      try {
+        const response = await api.hasInitialStock(employee.id);
+        if (cancelled) return;
+
+        if (!response.success) {
+          setInitialStockStatus('error');
+          return;
+        }
+
+        if (!response.data) {
+          setInitialStockStatus('required');
+          setCurrentScreen('InitialStock');
+          return;
+        }
+
+        await Promise.all([
+          loadNomenclature(),
+          loadExpenseSheets(employee.id),
+          loadMessages(employee.id),
+          loadAnnouncements(),
+        ]);
+        if (cancelled) return;
+
+        setInitialStockStatus('completed');
+        setCurrentScreen(current => current === 'Login' || current === 'InitialStock' ? 'Home' : current);
+      } catch (error) {
+        console.error('Application loading error:', error);
+        if (!cancelled) setInitialStockStatus('error');
+      }
+    };
+
+    loadApplication();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, isConfigured, employee?.id, stockCheckAttempt]);
 
   const handleConnected = () => {
     setIsConfigured(true);
@@ -56,6 +111,7 @@ export default function App() {
   };
 
   const handleNavigate = (screen: string) => {
+    if (screen === 'ExpenseSheet') setEditingExpenseSheet(null);
     setCurrentScreen(screen as Screen);
   };
 
@@ -63,8 +119,18 @@ export default function App() {
     setCurrentScreen('Home');
   };
 
+  const handleEditExpenseSheet = (sheet: ExpenseSheet) => {
+    setEditingExpenseSheet(sheet);
+    setCurrentScreen('ExpenseSheet');
+  };
+
+  const handleExpenseSheetBack = () => {
+    setCurrentScreen(editingExpenseSheet ? 'Profile' : 'Home');
+    setEditingExpenseSheet(null);
+  };
+
   // Если конфигурация ещё не загружена, показываем загрузку
-  if (isConfigured === null) {
+  if (isConfigured === null || (isConfigured === true && isAuthenticated && initialStockStatus === 'checking')) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="flex flex-col items-center">
@@ -115,6 +181,34 @@ export default function App() {
     return <SetupScreen onConnected={handleConnected} onBack={handleBackToLogin} />;
   }
 
+  if (isAuthenticated && initialStockStatus === 'error') {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center p-5">
+        <div className="max-w-sm w-full text-center">
+          <h1 className="text-xl font-bold text-slate-800 mb-3">Не удалось загрузить данные</h1>
+          <p className="text-slate-500 mb-6">Проверьте подключение к базе данных и повторите попытку.</p>
+          <button
+            onClick={() => setStockCheckAttempt(attempt => attempt + 1)}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-5 rounded-lg w-full mb-3 transition-colors"
+          >
+            Повторить
+          </button>
+          <button onClick={logout} className="text-red-600 p-2 text-sm">Выйти</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isAuthenticated && initialStockStatus === 'required') {
+    return (
+      <div className="min-h-screen bg-slate-50 max-w-lg mx-auto shadow-xl">
+        <InitialStockScreen
+          onComplete={() => setStockCheckAttempt(attempt => attempt + 1)}
+        />
+      </div>
+    );
+  }
+
   // Рендер текущего экрана
   const renderScreen = () => {
     switch (currentScreen) {
@@ -123,19 +217,21 @@ export default function App() {
       case 'Home':
         return <HomeScreen onNavigate={handleNavigate} />;
       case 'ExpenseSheet':
-        return <ExpenseSheetScreen onBack={handleBack} />;
+        return <ExpenseSheetScreen onBack={handleExpenseSheetBack} sheet={editingExpenseSheet || undefined} />;
       case 'Messages':
         return <MessagesScreen onBack={handleBack} />;
       case 'Announcements':
         return <AnnouncementsScreen onBack={handleBack} />;
       case 'Profile':
-        return <ProfileScreen onBack={handleBack} />;
+        return <ProfileScreen onBack={handleBack} onEditExpenseSheet={handleEditExpenseSheet} />;
       case 'Return':
         return <ReturnScreen onBack={handleBack} />;
       case 'Settings':
         return <SettingsScreen onBack={handleBack} />;
       case 'Setup':
         return <SetupScreen onConnected={handleConnected} onBack={handleBackToLogin} />;
+      case 'InitialStock':
+        return <InitialStockScreen onComplete={() => setCurrentScreen('Home')} />;
       default:
         return <HomeScreen onNavigate={handleNavigate} />;
     }

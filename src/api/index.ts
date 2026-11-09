@@ -1,6 +1,7 @@
 // API клиент для работы с Google Sheets через Apps Script
 import axios, { AxiosInstance } from 'axios';
-import { ApiResponse, Employee, ExpenseSheet, ChatMessage, Announcement, Nomenclature } from '../types';
+import { ApiResponse, Employee, ExpenseSheet, ChatMessage, Announcement, Nomenclature, InitialStockItem } from '../types';
+import { useSyncStore } from '../store/syncStore';
 
 const CONFIG_KEY = 'appsScriptConfig';
 
@@ -15,22 +16,51 @@ class ApiService {
         'Content-Type': 'application/json',
       },
     });
+    useSyncStore.getState().setSender((action, data) => this.postToServer(action, data));
+    useSyncStore.getState().initialize();
   }
 
   async initialize() {
     const url = localStorage.getItem(CONFIG_KEY);
     if (url) {
       this.scriptUrl = url;
+      await useSyncStore.getState().flush();
     }
   }
 
   async saveConfig(url: string) {
     localStorage.setItem(CONFIG_KEY, url);
     this.scriptUrl = url;
+    await useSyncStore.getState().flush();
   }
 
   getConfigUrl(): string {
     return this.scriptUrl;
+  }
+
+  private async postToServer(action: string, data: unknown): Promise<void> {
+    if (!this.scriptUrl) throw new Error('Не настроен адрес базы данных');
+
+    const response = await fetch(this.scriptUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action, data }),
+    });
+    if (!response.ok) throw new Error(`Ошибка сервера: ${response.status}`);
+
+    const result = await response.json();
+    if (!result.success || result.error) {
+      throw new Error(result.error || 'Сервер не подтвердил сохранение');
+    }
+  }
+
+  private async saveMutation<T>(action: string, data: unknown): Promise<ApiResponse<T>> {
+    try {
+      const { queued } = await useSyncStore.getState().enqueue(action, data);
+      return { success: true, queued };
+    } catch {
+      return { success: false, error: 'Не удалось сохранить данные на устройстве' };
+    }
   }
 
   async testConnection(): Promise<ApiResponse<{ title: string; sheets: string[] }>> {
@@ -113,30 +143,129 @@ class ApiService {
     }
   }
 
-  async createExpenseSheet(sheet: Omit<ExpenseSheet, 'id'>): Promise<ApiResponse<ExpenseSheet>> {
+  async hasInitialStock(employeeId: string): Promise<ApiResponse<boolean>> {
     try {
-      console.log('=== CREATE EXPENSE SHEET REQUEST ===');
-      console.log('Sheet data:', sheet);
-      
-      await fetch(this.scriptUrl, {
+      const searchId = String(employeeId).trim();
+      const response = await this.client.get(
+        `${this.scriptUrl}?action=getInitialStock&employeeId=${encodeURIComponent(searchId)}`
+      );
+      const stockRows = Array.isArray(response.data) ? response.data : response.data?.data;
+      if (!Array.isArray(stockRows)) {
+        return { success: false, error: response.data?.error || 'Сервер вернул некорректный список начальных остатков' };
+      }
+
+      const initialized = stockRows.some((row: any) =>
+        String(row['Сотрудник_ID'] ?? row.employeeId ?? '').trim() === searchId &&
+        String(row['Номенклатура_ID'] ?? row.nomenclatureId ?? '').trim() !== ''
+      );
+      if (initialized) {
+        localStorage.setItem(`initialStockSaved_${searchId}`, 'true');
+        return { success: true, data: true };
+      }
+
+      const legacyResponse = await this.client.get(`${this.scriptUrl}?action=getArrivals`);
+      const arrivals = Array.isArray(legacyResponse.data) ? legacyResponse.data : legacyResponse.data?.data;
+      if (!Array.isArray(arrivals)) {
+        return { success: false, error: legacyResponse.data?.error || 'Сервер вернул некорректный список приходов' };
+      }
+
+      const hasLegacyStock = arrivals.some((arrival: any) =>
+        String(arrival['Сотрудник_ID'] ?? arrival.employeeId ?? '').trim() === searchId &&
+        String(arrival['Тип'] ?? arrival.type ?? '').trim().toLowerCase() === 'начальные остатки'
+      );
+      if (!hasLegacyStock) return { success: true, data: false };
+
+      const migration = await this.migrateInitialStock(searchId);
+      if (migration.success) {
+        localStorage.setItem(`initialStockSaved_${searchId}`, 'true');
+        return { success: true, data: true };
+      }
+      return { success: false, error: migration.error };
+    } catch (error) {
+      const savedLocally = localStorage.getItem(`initialStockSaved_${employeeId}`) === 'true';
+      if (savedLocally || !navigator.onLine) return { success: true, data: true };
+      return { success: false, error: 'Не удалось проверить начальные остатки' };
+    }
+  }
+
+  private async migrateInitialStock(employeeId: string): Promise<ApiResponse<void>> {
+    try {
+      const response = await fetch(this.scriptUrl, {
         method: 'POST',
-        mode: 'no-cors',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'text/plain;charset=utf-8',
         },
         body: JSON.stringify({
-          action: 'addExpenseSheet',
-          data: sheet,
+          action: 'migrateInitialStock',
+          data: { employeeId },
         }),
       });
-      
-      console.log('=== CREATE EXPENSE SHEET - Request sent (no-cors mode) ===');
+
+      if (!response.ok) {
+        return { success: false, error: `Ошибка сервера: ${response.status}` };
+      }
+
+      const result = await response.json();
+      if (!result.success || result.error) {
+        return { success: false, error: result.error || 'Не удалось перенести начальные остатки' };
+      }
+
       return { success: true };
-    } catch (error: any) {
-      console.error('=== CREATE EXPENSE SHEET ERROR ===');
-      console.error('Error:', error);
-      return { success: false, error: 'Ошибка создания листа расхода' };
+    } catch (error) {
+      return { success: false, error: 'Ошибка переноса начальных остатков' };
     }
+  }
+
+  async saveInitialStock(
+    employeeId: string,
+    employeeName: string,
+    items: InitialStockItem[]
+  ): Promise<ApiResponse<void>> {
+    const now = new Date();
+    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const data = {
+      'ID': `INITIAL-${employeeId}`,
+      'Сотрудник_ID': employeeId,
+      'ФИО сотрудника': employeeName,
+      'Дата': now.toISOString(),
+      'Период': month,
+      'Позиции (JSON)': JSON.stringify(items),
+      'Дата внесения': now.toISOString(),
+      'Комментарий': 'Первичный ввод остатков сотрудником',
+    };
+
+    try {
+      localStorage.setItem(`initialStockSaved_${employeeId}`, 'true');
+      return await this.saveMutation('addInitialStock', data);
+    } catch {
+      return { success: false, error: 'Не удалось сохранить начальные остатки на устройстве' };
+    }
+  }
+
+  async createExpenseSheet(sheet: Omit<ExpenseSheet, 'id'>): Promise<ApiResponse<ExpenseSheet>> {
+    const createdSheet: ExpenseSheet = {
+      ...sheet,
+      id: `SHEET-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    };
+    const response = await this.saveMutation<ExpenseSheet>('addExpenseSheet', createdSheet);
+    return { ...response, data: createdSheet };
+  }
+
+  async updateExpenseSheet(sheet: ExpenseSheet): Promise<ApiResponse<void>> {
+    return this.saveMutation('updateExpenseSheet', {
+      id: sheet.id,
+      data: {
+        'Пациент': sheet.patientName,
+        'Дата рождения пациента': sheet.patientBirthDate,
+        'Дата': sheet.date,
+        'Месяц': sheet.month,
+        'Категория выезда': sheet.callCategory,
+        'Название терапии': sheet.therapyName,
+        'Стоимость терапии': sheet.therapyCost,
+        'Итого по препаратам': sheet.totalAmount,
+        items: sheet.items,
+      },
+    });
   }
 
   async getEmployeeExpenseSheets(employeeId: string): Promise<ApiResponse<ExpenseSheet[]>> {
@@ -161,99 +290,20 @@ class ApiService {
     }
   }
 
-  async sendMessage(message: Omit<ChatMessage, 'id' | 'date'>): Promise<ApiResponse<ChatMessage>> {
-    try {
-      console.log('=== SEND MESSAGE REQUEST ===');
-      console.log('Full message object:', JSON.stringify(message, null, 2));
-      console.log('toId:', message.toId);
-      console.log('toName:', message.toName);
-      console.log('fromId:', message.fromId);
-      console.log('fromName:', message.fromName);
-      
-      const requestBody = {
-        action: 'addChatMessage',
-        data: message,
-      };
-      
-      console.log('Request body:', JSON.stringify(requestBody, null, 2));
-      
-      await fetch(this.scriptUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
-      
-      console.log('=== SEND MESSAGE - Request sent (no-cors mode) ===');
-      return { success: true };
-    } catch (error: any) {
-      console.error('=== SEND MESSAGE ERROR ===');
-      console.error('Error:', error);
-      return { success: false, error: 'Ошибка отправки сообщения' };
-    }
+  async sendMessage(message: ChatMessage): Promise<ApiResponse<ChatMessage>> {
+    return this.saveMutation('addChatMessage', message);
+  }
+
+  async markMessageAsRead(messageId: string): Promise<ApiResponse<void>> {
+    return this.saveMutation('updateChatMessage', { id: messageId, 'Прочитано': 'ДА' });
   }
 
   async editMessage(messageId: string, newText: string): Promise<ApiResponse<void>> {
-    try {
-      console.log('=== EDIT MESSAGE REQUEST ===');
-      console.log('Message ID:', messageId);
-      console.log('New text:', newText);
-      
-      const requestBody = {
-        action: 'editChatMessage',
-        data: { id: messageId, text: newText },
-      };
-      
-      console.log('Request body:', JSON.stringify(requestBody, null, 2));
-      
-      await fetch(this.scriptUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
-      
-      console.log('=== EDIT MESSAGE - Request sent (no-cors mode) ===');
-      return { success: true };
-    } catch (error: any) {
-      console.error('=== EDIT MESSAGE ERROR ===');
-      console.error('Error:', error);
-      return { success: false, error: 'Ошибка редактирования сообщения' };
-    }
+    return this.saveMutation('editChatMessage', { id: messageId, text: newText });
   }
 
   async deleteMessage(messageId: string): Promise<ApiResponse<void>> {
-    try {
-      console.log('=== DELETE MESSAGE REQUEST ===');
-      console.log('Message ID:', messageId);
-      
-      const requestBody = {
-        action: 'deleteChatMessage',
-        data: { id: messageId },
-      };
-      
-      console.log('Request body:', JSON.stringify(requestBody, null, 2));
-      
-      await fetch(this.scriptUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
-      
-      console.log('=== DELETE MESSAGE - Request sent (no-cors mode) ===');
-      return { success: true };
-    } catch (error: any) {
-      console.error('=== DELETE MESSAGE ERROR ===');
-      console.error('Error:', error);
-      return { success: false, error: 'Ошибка удаления сообщения' };
-    }
+    return this.saveMutation('deleteChatMessage', { id: messageId });
   }
 
   async getAnnouncements(): Promise<ApiResponse<Announcement[]>> {
@@ -265,60 +315,73 @@ class ApiService {
     }
   }
 
-  async openShift(employeeId: string): Promise<ApiResponse<void>> {
+  async createReturn(data: {
+    employeeId: string;
+    employeeName: string;
+    nomenclatureId: string;
+    nomenclatureName: string;
+    unit: string;
+    quantity: number;
+    reason: string;
+  }): Promise<ApiResponse<void>> {
+    const now = new Date();
+    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    return this.saveMutation('addReturn', {
+      'ID': `RETURN-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      'Сотрудник_ID': data.employeeId,
+      'ФИО сотрудника': data.employeeName,
+      'Дата создания': now.toISOString(),
+      'Месяц': month,
+      'Номенклатура_ID': data.nomenclatureId,
+      'Название': data.nomenclatureName,
+      'Ед. измерения': data.unit,
+      'Ед. изм.': data.unit,
+      'Количество': data.quantity,
+      'Статус': 'Ожидает подтверждения',
+      'Причина': data.reason,
+    });
+  }
+
+  async getEmployeeWorkState(employeeId: string): Promise<ApiResponse<{ shiftOpen: boolean; blocked: boolean }>> {
     try {
-      console.log('=== OPEN SHIFT REQUEST ===');
-      console.log('Employee ID:', employeeId);
-      
-      const response = await fetch(this.scriptUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await this.client.get(`${this.scriptUrl}?action=getEmployees`);
+      const employees = Array.isArray(response.data) ? response.data : response.data?.data;
+      if (!Array.isArray(employees)) {
+        return { success: false, error: 'Сервер вернул некорректный список сотрудников' };
+      }
+
+      const employee = employees.find(item =>
+        String(item['ID'] ?? item.id ?? '').trim() === String(employeeId).trim()
+      );
+      if (!employee) {
+        return { success: false, error: 'Сотрудник не найден' };
+      }
+
+      return {
+        success: true,
+        data: {
+          shiftOpen: employee['Смена открыта'] === 'ДА' || employee['Смена открыта'] === true,
+          blocked: employee['Заблокирован'] === 'ДА' || employee['Заблокирован'] === true,
         },
-        body: JSON.stringify({
-          action: 'updateEmployeeShift',
-          data: { id: employeeId, shiftOpen: true, status: 'Активен' },
-        }),
-      });
-      
-      console.log('=== OPEN SHIFT RESPONSE ===');
-      console.log('Type:', response.type);
-      
-      return { success: true };
-    } catch (error: any) {
-      console.error('=== OPEN SHIFT ERROR ===');
-      console.error('Error:', error);
-      return { success: false, error: 'Ошибка открытия смены' };
+      };
+    } catch (error) {
+      return { success: false, error: 'Ошибка обновления статуса сотрудника' };
     }
   }
 
+  async openShift(employeeId: string): Promise<ApiResponse<void>> {
+    return this.saveMutation('updateEmployeeShift', {
+      id: employeeId,
+      shiftOpen: true,
+    });
+  }
+
   async closeShift(employeeId: string): Promise<ApiResponse<void>> {
-    try {
-      console.log('=== CLOSE SHIFT REQUEST ===');
-      console.log('Employee ID:', employeeId);
-      
-      const response = await fetch(this.scriptUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'updateEmployeeShift',
-          data: { id: employeeId, shiftOpen: false, status: 'Неактивен' },
-        }),
-      });
-      
-      console.log('=== CLOSE SHIFT RESPONSE ===');
-      console.log('Type:', response.type);
-      
-      return { success: true };
-    } catch (error: any) {
-      console.error('=== CLOSE SHIFT ERROR ===');
-      console.error('Error:', error);
-      return { success: false, error: 'Ошибка закрытия смены' };
-    }
+    return this.saveMutation('updateEmployeeShift', {
+      id: employeeId,
+      shiftOpen: false,
+    });
   }
 }
 

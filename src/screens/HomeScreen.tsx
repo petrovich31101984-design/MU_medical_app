@@ -2,25 +2,42 @@ import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useDataStore } from '../store/dataStore';
 import { api } from '../api';
+import NetworkStatus from '../components/NetworkStatus';
 
 interface HomeScreenProps {
   onNavigate: (screen: string) => void;
 }
 
 export default function HomeScreen({ onNavigate }: HomeScreenProps) {
-  const { employee, logout } = useAuthStore();
-  const { loadAnnouncements, announcements } = useDataStore();
+  const { employee, logout, updateShift } = useAuthStore();
+  const { announcements, messages, loadMessages } = useDataStore();
   const [shiftStatus, setShiftStatus] = useState(false);
   const [shiftMessage, setShiftMessage] = useState('');
 
   useEffect(() => {
-    if (employee) {
-      // Проверяем статус смены на основе status или shiftOpen
-      const isOpen = employee.status === 'Активен' || employee.shiftOpen === true;
-      setShiftStatus(isOpen);
-      loadAnnouncements();
-    }
-  }, [employee]);
+    if (!employee) return;
+
+    const refreshWorkState = async () => {
+      const response = await api.getEmployeeWorkState(employee.id);
+      if (!response.success || !response.data) return;
+
+      if (response.data.blocked) {
+        await logout();
+        return;
+      }
+
+      setShiftStatus(response.data.shiftOpen);
+      updateShift(response.data.shiftOpen);
+    };
+
+    setShiftStatus(employee.shiftOpen === true);
+    void refreshWorkState();
+    const interval = setInterval(() => {
+      void loadMessages(employee.id);
+      void refreshWorkState();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [employee?.id]);
 
   const handleToggleShift = async () => {
     if (!employee) return;
@@ -31,9 +48,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
         if (result.success) {
           setShiftStatus(false);
           setShiftMessage('Смена закрыта');
-          // Обновляем данные сотрудника в localStorage
-          const updatedEmployee = { ...employee, shiftOpen: false, status: 'Неактивен' };
-          localStorage.setItem('employee', JSON.stringify(updatedEmployee));
+          updateShift(false);
         } else {
           setShiftMessage('Не удалось закрыть смену');
         }
@@ -42,9 +57,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
         if (result.success) {
           setShiftStatus(true);
           setShiftMessage('Смена открыта');
-          // Обновляем данные сотрудника в localStorage
-          const updatedEmployee = { ...employee, shiftOpen: true, status: 'Активен' };
-          localStorage.setItem('employee', JSON.stringify(updatedEmployee));
+          updateShift(true);
         } else {
           setShiftMessage('Не удалось открыть смену');
         }
@@ -56,8 +69,20 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
     }
   };
 
-  const unreadMessages = 0;
-  const activeAnnouncements = announcements.filter(a => a.active).length;
+  const unreadMessages = messages.filter(message =>
+    message.toId === employee?.id && !message.read
+  ).length;
+  
+  // Функция для проверки активности объявления (поддержка разных форматов)
+  const isAnnouncementActive = (announcement: any) => {
+    return announcement.active === true || 
+           announcement.active === 'ДА' || 
+           announcement['Активно'] === 'ДА' || 
+           announcement['Активно'] === true ||
+           announcement['Активно'] === 'true';
+  };
+  
+  const activeAnnouncements = announcements.filter(isAnnouncementActive).length;
 
   return (
     <div className="min-h-screen bg-slate-50 pb-48">
@@ -67,6 +92,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
           <p className="text-sm text-slate-500">
             Здравствуйте, {employee?.fullName ? employee.fullName.split(' ').slice(1, 3).join(' ') : 'Сотрудник'}
           </p>
+          <NetworkStatus />
         </div>
         <button
           onClick={logout}
@@ -79,40 +105,32 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
       {/* Announcements from Manager */}
       <div className="m-5 announcement-border">
         <div className="relative bg-yellow-50 p-4 rounded-[10px]">
-          {announcements.filter(a => a.active).length > 0 ? (
-            <>
-              <div className="space-y-3">
-                {announcements
-                  .filter(a => a.active)
-                  .slice(0, 3)
-                  .map((announcement) => (
-                    <div key={announcement.id} className="bg-white p-3 rounded-lg border border-yellow-200">
-                      <div className="flex justify-between items-start mb-1">
-                        <h4 className="text-sm font-bold text-slate-800 flex-1">
-                          {announcement.title}
-                        </h4>
-                        <span className="text-xs text-slate-400 ml-2 whitespace-nowrap">
-                          {new Date(announcement.date).toLocaleDateString('ru-RU')}
-                        </span>
-                      </div>
-                      <p className="text-sm text-slate-600 leading-relaxed">
-                        {announcement.text}
-                      </p>
-                      <p className="text-xs text-slate-400 mt-2">
-                        От: {announcement.createdBy}
-                      </p>
+          {announcements.filter(isAnnouncementActive).length > 0 ? (
+            <div className="space-y-3">
+              {announcements
+                .filter(isAnnouncementActive)
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                .slice(0, 1)
+                .map((announcement) => (
+                  <div key={announcement.id} className="bg-white p-3 rounded-lg border border-yellow-200">
+                    <div className="flex justify-between items-start mb-1">
+                      <h4 className="text-sm font-bold text-slate-800 flex-1">
+                        {announcement.title}
+                      </h4>
+                      <span className="text-xs text-slate-400 ml-2 whitespace-nowrap">
+                        {new Date(announcement.date).toLocaleDateString('ru-RU')}
+                      </span>
                     </div>
-                  ))}
-              </div>
-              {announcements.filter(a => a.active).length > 3 && (
-                <button
-                  className="w-full mt-3 py-2 text-sm text-yellow-700 font-medium hover:bg-yellow-100 rounded-lg transition-colors"
-                  onClick={() => onNavigate('Announcements')}
-                >
-                  Показать все объявления →
-                </button>
-              )}
-            </>
+                    <p className="text-sm text-slate-600 leading-relaxed">
+                      {announcement.text}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-2">
+                      От: {announcement.createdBy}
+                    </p>
+                  </div>
+                ))}
+
+            </div>
           ) : (
             <div className="text-center py-4">
               <p className="text-sm text-slate-500">📢 Нет новых объявлений</p>
@@ -124,15 +142,18 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
       {/* Menu */}
       <div className="p-5 space-y-3">
         <button
-          className="bg-white w-full p-4 rounded-xl border border-slate-200 flex items-center hover:bg-slate-50 transition-colors"
+          className="bg-white w-full p-4 rounded-xl border border-slate-200 flex items-center hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:hover:bg-white disabled:cursor-not-allowed"
           onClick={() => onNavigate('ExpenseSheet')}
+          disabled={!shiftStatus}
         >
           <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mr-4 text-2xl">
             📝
           </div>
           <div className="text-left flex-1">
             <p className="text-base font-bold text-slate-800">Лист расхода</p>
-            <p className="text-sm text-slate-500 mt-1">Создать новый лист расхода</p>
+            <p className="text-sm text-slate-500 mt-1">
+              {shiftStatus ? 'Создать новый лист расхода' : 'Откройте смену для создания листа расхода'}
+            </p>
           </div>
         </button>
 
