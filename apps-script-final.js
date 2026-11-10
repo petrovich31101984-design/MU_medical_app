@@ -222,6 +222,12 @@ function appendRow(sheetName, rowData) {
 
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   const row = headers.map(h => rowData[h] !== undefined ? rowData[h] : '');
+  const targetRow = sheet.getLastRow() + 1;
+  row.forEach((value, colIndex) => {
+    if (typeof value === 'string' && /^0\d+$/.test(value)) {
+      sheet.getRange(targetRow, colIndex + 1).setNumberFormat('@');
+    }
+  });
   sheet.appendRow(row);
 }
 
@@ -245,7 +251,11 @@ function updateRow(sheetName, id, updates) {
       Object.keys(updates).forEach(key => {
         const colIndex = headers.indexOf(key);
         if (colIndex !== -1) {
-          sheet.getRange(i + 1, colIndex + 1).setValue(updates[key]);
+          const value = updates[key];
+          if (typeof value === 'string' && /^0\d+$/.test(value)) {
+            sheet.getRange(i + 1, colIndex + 1).setNumberFormat('@');
+          }
+          sheet.getRange(i + 1, colIndex + 1).setValue(value);
         }
       });
       return;
@@ -309,11 +319,69 @@ function getNomenclatureData() {
 }
 
 function addNomenclatureData(data) {
-  appendRow('Номенклатура', data);
+  const nomenclatureId = data['ID'] || data.id || 'NOM-' + Date.now();
+  const name = data['Название'] ?? data.name ?? '';
+  const now = new Date();
+  appendRow('Номенклатура', {
+    'ID': nomenclatureId,
+    'Название': name,
+    'Категория': data['Категория'] ?? data.category ?? '',
+    'Ед. измерения': data['Ед. измерения'] ?? data.unit ?? '',
+    'Производитель': data['Производитель'] ?? data.manufacturer ?? '',
+    'Количество в упаковке': data['Количество в упаковке'] ?? data.packageQuantity ?? 1,
+    'Актуальна': data['Актуальна'] ?? (data.active === false ? 'НЕТ' : 'ДА'),
+    'Дата создания': now,
+    'Примечание': data['Примечание'] ?? data.note ?? ''
+  });
+  const price = data['Цена за ед. (₽)'] ?? data.currentPrice;
+  if (price !== undefined) {
+    appendRow('Цены', {
+      'ID': 'PRICE-' + Date.now(),
+      'Номенклатура_ID': nomenclatureId,
+      'Название': name,
+      'Цена за ед. (₽)': price,
+      'Дата начала': now,
+      'Дата окончания': '',
+      'Кем изменено': data['Кем изменено'] ?? 'Руководитель',
+      'Дата изменения': now,
+      'Примечание': 'Цена при добавлении номенклатуры'
+    });
+  }
 }
 
 function updateNomenclatureData(id, updates) {
-  updateRow('Номенклатура', id, updates);
+  const name = updates['Название'] ?? updates.name ?? '';
+  updateRow('Номенклатура', id, {
+    'Название': name,
+    'Категория': updates['Категория'] ?? updates.category ?? '',
+    'Ед. измерения': updates['Ед. измерения'] ?? updates.unit ?? '',
+    'Производитель': updates['Производитель'] ?? updates.manufacturer ?? '',
+    'Количество в упаковке': updates['Количество в упаковке'] ?? updates.packageQuantity ?? 1,
+    'Актуальна': updates['Актуальна'] ?? (updates.active === false ? 'НЕТ' : 'ДА')
+  });
+  const price = updates['Цена за ед. (₽)'] ?? updates.currentPrice;
+  if (price === undefined) return;
+  const activePrices = getPricesData().filter(row =>
+    String(row['Номенклатура_ID'] ?? '').trim() === String(id).trim() &&
+    !row['Дата окончания']
+  );
+  const currentPrice = activePrices[activePrices.length - 1];
+  if (currentPrice && Number(currentPrice['Цена за ед. (₽)']) === Number(price)) return;
+  const now = new Date();
+  activePrices.forEach(row => {
+    updateRow('Цены', row['ID'], { 'Дата окончания': now });
+  });
+  appendRow('Цены', {
+    'ID': 'PRICE-' + Date.now(),
+    'Номенклатура_ID': id,
+    'Название': name,
+    'Цена за ед. (₽)': price,
+    'Дата начала': now,
+    'Дата окончания': '',
+    'Кем изменено': updates['Кем изменено'] ?? 'Руководитель',
+    'Дата изменения': now,
+    'Примечание': 'Изменение цены номенклатуры'
+  });
 }
 
 function deleteNomenclatureData(id) {
@@ -409,28 +477,44 @@ function getArrivalsData() {
   return readSheetData('Приход');
 }
 
-function addArrivalData(data) {
+function normalizeArrivalData(data) {
+  const normalized = { ...data };
+  const fieldMap = {
+    id: 'ID',
+    employeeId: 'Сотрудник_ID',
+    employeeName: 'ФИО сотрудника',
+    date: 'Дата',
+    month: 'Месяц',
+    amount: 'Сумма (₽)',
+    shifts: 'Количество смен',
+    addedBy: 'Кем внесено',
+    type: 'Тип',
+    comment: 'Комментарий'
+  };
+  Object.keys(fieldMap).forEach(key => {
+    if (data[key] !== undefined) normalized[fieldMap[key]] = data[key];
+  });
+  if (data.employeeName !== undefined) normalized['Сотрудник'] = data.employeeName;
+  if (data.archived !== undefined) normalized['Архив'] = data.archived ? 'ДА' : 'НЕТ';
   const positions = data.items ?? data['Позиции'] ?? data['Позиции (JSON)'];
   if (positions !== undefined) {
-    const serializedPositions = typeof positions === 'string'
-      ? positions
-      : JSON.stringify(positions);
-    data['Позиции'] = serializedPositions;
-    data['Позиции (JSON)'] = serializedPositions;
+    const serializedPositions = typeof positions === 'string' ? positions : JSON.stringify(positions);
+    normalized['Позиции'] = serializedPositions;
+    normalized['Позиции (JSON)'] = serializedPositions;
   }
-  appendRow('Приход', data);
+  return normalized;
+}
+
+function addArrivalData(data) {
+  const rowData = normalizeArrivalData(data);
+  rowData['ID'] = rowData['ID'] || 'ARR-' + Date.now();
+  rowData['Дата внесения'] = rowData['Дата внесения'] || new Date();
+  rowData['Архив'] = rowData['Архив'] || 'НЕТ';
+  appendRow('Приход', rowData);
 }
 
 function updateArrivalData(id, updates) {
-  const positions = updates.items ?? updates['Позиции'] ?? updates['Позиции (JSON)'];
-  if (positions !== undefined) {
-    const serializedPositions = typeof positions === 'string'
-      ? positions
-      : JSON.stringify(positions);
-    updates['Позиции'] = serializedPositions;
-    updates['Позиции (JSON)'] = serializedPositions;
-  }
-  updateRow('Приход', id, updates);
+  updateRow('Приход', id, normalizeArrivalData(updates));
 }
 
 function deleteArrivalData(id) {

@@ -293,7 +293,7 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
               {therapyNames.map((name, index) => (
                 <div key={index} className="flex gap-2 mb-2">
                   <select
-                    className="flex-1 border border-slate-200 rounded-lg p-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    className="flex-1 min-w-0 w-full border border-slate-200 rounded-lg p-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                     value={name}
                     onChange={(e) => {
                       const newNames = [...therapyNames];
@@ -304,7 +304,7 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
                     <option value="">Выберите тип терапии</option>
                     <option value="Восстановление стандарт">Восстановление стандарт</option>
                     <option value="Восстановление стандарт +">Восстановление стандарт +</option>
-                    <option value="Восстановление максимал">Восстановление максимал</option>
+                    <option value="Восстановление максимум">Восстановление максимум</option>
                     <option value="Восстановление + кардио">Восстановление + кардио</option>
                     <option value="Восстановление + нейрооптимизация (NO терапия)">Восстановление + нейрооптимизация (NO терапия)</option>
                     <option value="Нейро Рестарт">Нейро Рестарт</option>
