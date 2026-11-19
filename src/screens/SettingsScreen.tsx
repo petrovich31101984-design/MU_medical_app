@@ -39,13 +39,6 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
     }
   };
 
-  const handleClearData = () => {
-    if (confirm('Вы уверены, что хотите очистить все данные приложения?')) {
-      localStorage.clear();
-      window.location.reload();
-    }
-  };
-
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="bg-white p-4 border-b border-slate-200 flex items-center">
@@ -106,27 +99,19 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
           </button>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-slate-200 mb-5">
-          <h2 className="text-lg font-bold text-slate-800 mb-4">Управление данными</h2>
-          
-          <button
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition-colors"
-            onClick={handleClearData}
-          >
-            Очистить все данные
-          </button>
-          <p className="text-xs text-slate-500 mt-2 text-center">
-            Это действие удалит все локальные данные и настройки
-          </p>
-        </div>
-
         <div className="bg-white p-5 rounded-xl border border-slate-200">
           <h2 className="text-lg font-bold text-slate-800 mb-4">Информация о приложении</h2>
           
           <div className="space-y-3">
-            <div className="flex justify-between items-center py-2 border-b border-slate-100">
-              <span className="text-sm text-slate-500">Название</span>
-              <span className="text-sm text-slate-800 font-medium">АлкоСпас СМУм</span>
+            {/* «Название» и полное название — всегда в одну строку.
+                Шрифт строки 14px, а на узких экранах уменьшается по ширине экрана,
+                чтобы строка не переносилась (100vw − 88px — ширина строки в карточке). */}
+            <div
+              className="flex justify-between items-center gap-2 py-2 border-b border-slate-100 whitespace-nowrap"
+              style={{ fontSize: 'min(0.875rem, calc((100vw - 88px) / 28))' }}
+            >
+              <span className="text-slate-500">Название</span>
+              <span className="text-slate-800 font-medium">СМУм (система медицинского учета мобильная)</span>
             </div>
             
             <div className="flex justify-between items-center py-2 border-b border-slate-100">
