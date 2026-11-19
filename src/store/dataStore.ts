@@ -16,6 +16,25 @@ const writeCache = (key: string, data: unknown[]) => {
   localStorage.setItem(`cache_${key}`, JSON.stringify(data));
 };
 
+// Сообщения, отправленные с этого устройства, которых ещё нет в ответе сервера.
+// Без этого автообновление (каждые 5 с) затирало только что отправленное сообщение,
+// пока Apps Script не запишет его в таблицу, и оно появлялось с задержкой.
+const pendingMessageIds = new Set<string>();
+
+// Сообщения, ожидающие отправки в офлайн-очереди (переживают перезагрузку приложения)
+const queuedMessageIds = (): Set<string> => {
+  try {
+    const queue = JSON.parse(localStorage.getItem('offlineSyncQueue') || '[]');
+    return new Set(
+      (Array.isArray(queue) ? queue : [])
+        .filter((item: any) => item?.action === 'addChatMessage' && item?.data?.id)
+        .map((item: any) => String(item.data.id))
+    );
+  } catch {
+    return new Set();
+  }
+};
+
 interface DataStore {
   nomenclature: Nomenclature[];
   expenseSheets: ExpenseSheet[];
@@ -76,8 +95,15 @@ export const useDataStore = create<DataStore>((set, get) => ({
         const mergedServerMessages = serverMessages.map(message =>
           locallyReadIds.has(message.id) ? { ...message, read: true } : message
         );
-        const tempMessages = state.messages.filter(msg => msg.id.startsWith('temp_'));
-        const allMessages = [...mergedServerMessages, ...tempMessages];
+        const serverIds = new Set(serverMessages.map(message => String(message.id)));
+        // Сервер уже вернул сообщение — больше не нужно держать его локально
+        serverIds.forEach(id => pendingMessageIds.delete(id));
+        const queuedIds = queuedMessageIds();
+        const localOnlyMessages = state.messages.filter(msg =>
+          !serverIds.has(String(msg.id)) &&
+          (msg.id.startsWith('temp_') || pendingMessageIds.has(msg.id) || queuedIds.has(msg.id))
+        );
+        const allMessages = [...mergedServerMessages, ...localOnlyMessages];
         writeCache('messages', allMessages);
         return { messages: allMessages, loading: false };
       });
@@ -150,6 +176,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
       id: `MSG-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       date: new Date().toISOString(),
     };
+    pendingMessageIds.add(newMessage.id);
     set(state => {
       const messages = [...state.messages, newMessage];
       writeCache('messages', messages);
@@ -158,6 +185,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
     const response = await api.sendMessage(newMessage);
     if (!response.success) {
+      pendingMessageIds.delete(newMessage.id);
       set(state => {
         const messages = state.messages.filter(item => item.id !== newMessage.id);
         writeCache('messages', messages);

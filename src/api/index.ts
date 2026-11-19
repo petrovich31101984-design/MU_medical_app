@@ -136,8 +136,27 @@ class ApiService {
 
   async getNomenclature(): Promise<ApiResponse<Nomenclature[]>> {
     try {
-      const response = await this.client.get(`${this.scriptUrl}?action=getNomenclature`);
-      return { success: true, data: response.data };
+      const [response, pricesResponse] = await Promise.all([
+        this.client.get(`${this.scriptUrl}?action=getNomenclature`),
+        // Цены хранятся на отдельном листе «Цены»; без них лист расхода сохраняется с суммой 0.
+        // Ошибка загрузки цен не мешает загрузке номенклатуры.
+        this.client.get(`${this.scriptUrl}?action=getPrices`).catch(() => ({ data: [] })),
+      ]);
+      const rows = Array.isArray(response.data) ? response.data : [];
+      const prices: any[] = Array.isArray(pricesResponse.data) ? pricesResponse.data : [];
+      // Текущая цена — запись без «Даты окончания» (как в приложении руководителя)
+      const currentPrice = (id: unknown) => {
+        const row = prices.find(p =>
+          String(p['Номенклатура_ID'] ?? '').trim() === String(id ?? '').trim() &&
+          (!p['Дата окончания'] || p['Дата окончания'] === '')
+        );
+        return Number(row?.['Цена за ед. (₽)']) || 0;
+      };
+      const data = rows.map((row: any) => ({
+        ...row,
+        currentPrice: Number(row.currentPrice) || currentPrice(row['ID'] ?? row.id),
+      }));
+      return { success: true, data };
     } catch (error) {
       return { success: false, error: 'Ошибка загрузки номенклатуры' };
     }
