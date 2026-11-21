@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useDataStore } from '../store/dataStore';
 import { ChatMessage } from '../types';
+import ScreenHeader from '../components/ScreenHeader';
 
 interface MessagesScreenProps {
   onBack: () => void;
@@ -163,24 +164,20 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      <div className="bg-white p-4 border-b border-slate-200 flex items-center justify-between">
-        <div className="flex items-center">
+      <ScreenHeader
+        icon="💬"
+        title="Сообщения"
+        onBack={onBack}
+        right={
           <button
-            onClick={onBack}
-            className="text-blue-600 mr-4 p-2 hover:bg-blue-50 rounded-lg transition-colors"
+            onClick={() => employee && loadMessages(employee.id)}
+            className="text-blue-600 p-2 hover:bg-blue-50 rounded-lg transition-colors"
+            title="Обновить сообщения"
           >
-            ← Назад
+            🔄
           </button>
-          <h1 className="text-lg font-bold text-slate-800">Сообщения</h1>
-        </div>
-        <button
-          onClick={() => employee && loadMessages(employee.id)}
-          className="text-blue-600 p-2 hover:bg-blue-50 rounded-lg transition-colors"
-          title="Обновить сообщения"
-        >
-          🔄
-        </button>
-      </div>
+        }
+      />
 
       {/* Выбор получателя */}
       <div className="bg-white p-3 border-b border-slate-200">

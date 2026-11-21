@@ -3,6 +3,7 @@ import { useAuthStore } from '../store/authStore';
 import { useDataStore } from '../store/dataStore';
 import { api } from '../api';
 import NetworkStatus from '../components/NetworkStatus';
+import { logoutButtonClass } from '../components/ScreenHeader';
 
 interface HomeScreenProps {
   onNavigate: (screen: string) => void;
@@ -27,7 +28,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
       }
 
       setShiftStatus(response.data.shiftOpen);
-      updateShift(response.data.shiftOpen);
+      updateShift(response.data.shiftOpen, response.data.status);
     };
 
     setShiftStatus(employee.shiftOpen === true);
@@ -96,7 +97,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
         </div>
         <button
           onClick={logout}
-          className="text-red-600 text-sm p-2 hover:bg-red-50 rounded-lg transition-colors"
+          className={logoutButtonClass}
         >
           Выйти
         </button>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useDataStore } from '../store/dataStore';
 import { ExpenseItem, ExpenseSheet, Nomenclature } from '../types';
+import ScreenHeader from '../components/ScreenHeader';
 
 interface ExpenseSheetScreenProps {
   onBack: () => void;
@@ -154,17 +155,7 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="bg-white p-4 border-b border-slate-200 flex items-center relative">
-        <button
-          onClick={onBack}
-          className="text-blue-600 mr-4 p-2 hover:bg-blue-50 rounded-lg transition-colors"
-        >
-          ← Назад
-        </button>
-        <h1 className="text-lg font-bold text-slate-800 absolute left-1/2 transform -translate-x-1/2">
-          {sheet ? 'Редактирование' : 'Лист расхода'}
-        </h1>
-      </div>
+      <ScreenHeader icon="📝" title={sheet ? 'Редактирование' : 'Лист расхода'} onBack={onBack} />
 
       <div className="p-5 max-w-lg mx-auto">
         <div className="bg-white p-5 rounded-xl border border-slate-200 mb-5">

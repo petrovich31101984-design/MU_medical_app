@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useDataStore } from '../store/dataStore';
 import { ExpenseSheet } from '../types';
+import ScreenHeader from '../components/ScreenHeader';
 
 interface ProfileScreenProps {
   onBack: () => void;
@@ -16,7 +17,7 @@ const formatPatientName = (fullName: string) => {
 };
 
 export default function ProfileScreen({ onBack, onEditExpenseSheet }: ProfileScreenProps) {
-  const { employee, logout } = useAuthStore();
+  const { employee } = useAuthStore();
   const { expenseSheets, loadExpenseSheets } = useDataStore();
   const [showRecentSheets, setShowRecentSheets] = useState(false);
 
@@ -52,15 +53,7 @@ export default function ProfileScreen({ onBack, onEditExpenseSheet }: ProfileScr
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="bg-white p-4 border-b border-slate-200 flex items-center">
-        <button
-          onClick={onBack}
-          className="text-blue-600 mr-4 p-2 hover:bg-blue-50 rounded-lg transition-colors"
-        >
-          ← Назад
-        </button>
-        <h1 className="text-lg font-bold text-slate-800">Профиль</h1>
-      </div>
+      <ScreenHeader icon="👤" title="Профиль" onBack={onBack} />
 
       <div className="bg-white p-6 flex flex-col items-center border-b border-slate-200">
         <div className="w-20 h-20 rounded-full bg-blue-600 flex items-center justify-center mb-4">
@@ -125,15 +118,6 @@ export default function ProfileScreen({ onBack, onEditExpenseSheet }: ProfileScr
           <p className="text-sm text-slate-600 leading-relaxed">{employee.note}</p>
         </div>
       )}
-
-      <div className="p-5">
-        <button
-          className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-lg transition-colors"
-          onClick={logout}
-        >
-          Выйти из аккаунта
-        </button>
-      </div>
 
       {showRecentSheets && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">

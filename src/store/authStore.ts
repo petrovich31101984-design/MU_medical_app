@@ -5,7 +5,7 @@ interface AuthStore extends AuthState {
   login: (employee: Employee) => Promise<void>;
   logout: () => Promise<void>;
   loadSession: () => Promise<void>;
-  updateShift: (shiftOpen: boolean) => void;
+  updateShift: (shiftOpen: boolean, serverStatus?: string) => void;
 }
 
 export const useAuthStore = create<AuthStore>((set) => ({
@@ -53,13 +53,22 @@ export const useAuthStore = create<AuthStore>((set) => ({
     }
   },
 
-  updateShift: (shiftOpen: boolean) => {
+  updateShift: (shiftOpen: boolean, serverStatus?: string) => {
     set(state => {
-      if (!state.employee || state.employee.shiftOpen === shiftOpen) return state;
+      // «Активен» / «Неактивен» определяются сменой: открыта — Активен, закрыта — Неактивен
+      // (так их ставит updateEmployeeShiftData в Apps Script). Старый скрипт статус не менял,
+      // поэтому в таблице мог остаться «Активен» при закрытой смене — его не показываем.
+      // Другие статусы из таблицы (например «Отпуск») показываем как есть.
+      const shiftStatus = shiftOpen ? 'Активен' : 'Неактивен';
+      const status = serverStatus && serverStatus !== 'Активен' && serverStatus !== 'Неактивен'
+        ? serverStatus
+        : shiftStatus;
+      if (!state.employee || (state.employee.shiftOpen === shiftOpen && state.employee.status === status)) return state;
 
       const employee: Employee = {
         ...state.employee,
         shiftOpen,
+        status,
       };
       localStorage.setItem('employee', JSON.stringify(employee));
       return { employee };

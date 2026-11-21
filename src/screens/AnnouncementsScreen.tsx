@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useDataStore } from '../store/dataStore';
 import { Announcement } from '../types';
+import ScreenHeader from '../components/ScreenHeader';
 
 interface AnnouncementsScreenProps {
   onBack: () => void;
@@ -26,15 +27,7 @@ export default function AnnouncementsScreen({ onBack }: AnnouncementsScreenProps
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="bg-white p-4 border-b border-slate-200 flex items-center">
-        <button
-          onClick={onBack}
-          className="text-blue-600 mr-4 p-2 hover:bg-blue-50 rounded-lg transition-colors"
-        >
-          ← Назад
-        </button>
-        <h1 className="text-lg font-bold text-slate-800">Объявления</h1>
-      </div>
+      <ScreenHeader icon="📢" title="Объявления" onBack={onBack} />
 
       <div className="p-4 max-w-lg mx-auto">
         {activeAnnouncements.length === 0 ? (

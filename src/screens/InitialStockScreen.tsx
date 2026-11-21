@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/authStore';
 import { useDataStore } from '../store/dataStore';
 import { Nomenclature } from '../types';
 import NetworkStatus from '../components/NetworkStatus';
+import { logoutButtonClass } from '../components/ScreenHeader';
 
 interface InitialStockScreenProps {
   onComplete: () => void;
@@ -153,20 +154,20 @@ export default function InitialStockScreen({ onComplete }: InitialStockScreenPro
 
   return (
     <div className="min-h-screen bg-slate-50 pb-8">
-      <div className="bg-white p-5 border-b border-slate-200">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-bold text-slate-800">Начальные остатки</h1>
-            <p className="text-sm text-slate-500 mt-1">{employee?.fullName}</p>
-            <NetworkStatus />
-          </div>
-          <button
-            onClick={logout}
-            className="text-red-600 text-sm p-2 hover:bg-red-50 rounded-lg transition-colors"
-          >
-            Выйти
-          </button>
+      {/* Название по центру, как в остальных разделах; «Выйти» справа */}
+      <div className="bg-white px-2 py-4 border-b border-slate-200 grid grid-cols-[4.25rem_1fr_4.25rem] items-start gap-1">
+        <div />
+        <div className="flex flex-col items-center text-center">
+          <h1 className="font-bold text-slate-800 leading-tight" style={{ fontSize: 'min(1.125rem, 5vw)' }}>Начальные остатки</h1>
+          <p className="text-sm text-slate-500 mt-1">{employee?.fullName}</p>
+          <NetworkStatus />
         </div>
+        <button
+          onClick={logout}
+          className={`justify-self-end ${logoutButtonClass}`}
+        >
+          Выйти
+        </button>
       </div>
 
       <div className="p-5 max-w-lg mx-auto">

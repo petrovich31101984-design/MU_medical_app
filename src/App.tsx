@@ -14,6 +14,7 @@ import ProfileScreen from './screens/ProfileScreen';
 import SetupScreen from './screens/SetupScreen';
 import ReturnScreen from './screens/ReturnScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import { logoutButtonClass } from './components/ScreenHeader';
 import InitialStockScreen from './screens/InitialStockScreen';
 
 type Screen = 'Setup' | 'Login' | 'Home' | 'ExpenseSheet' | 'Messages' | 'Announcements' | 'Profile' | 'Return' | 'Settings' | 'InitialStock';
@@ -193,7 +194,7 @@ export default function App() {
           >
             Повторить
           </button>
-          <button onClick={logout} className="text-red-600 p-2 text-sm">Выйти</button>
+          <button onClick={logout} className={logoutButtonClass}>Выйти</button>
         </div>
       </div>
     );

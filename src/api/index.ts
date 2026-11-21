@@ -362,7 +362,7 @@ class ApiService {
     });
   }
 
-  async getEmployeeWorkState(employeeId: string): Promise<ApiResponse<{ shiftOpen: boolean; blocked: boolean }>> {
+  async getEmployeeWorkState(employeeId: string): Promise<ApiResponse<{ shiftOpen: boolean; blocked: boolean; status?: string }>> {
     try {
       const response = await this.client.get(`${this.scriptUrl}?action=getEmployees`);
       const employees = Array.isArray(response.data) ? response.data : response.data?.data;
@@ -382,6 +382,7 @@ class ApiService {
         data: {
           shiftOpen: employee['Смена открыта'] === 'ДА' || employee['Смена открыта'] === true,
           blocked: employee['Заблокирован'] === 'ДА' || employee['Заблокирован'] === true,
+          status: String(employee['Статус'] ?? employee.status ?? '').trim() || undefined,
         },
       };
     } catch (error) {

@@ -3,6 +3,7 @@ import { useDataStore } from '../store/dataStore';
 import { useAuthStore } from '../store/authStore';
 import { api } from '../api';
 import { Nomenclature } from '../types';
+import ScreenHeader from '../components/ScreenHeader';
 
 interface ReturnScreenProps {
   onBack: () => void;
@@ -116,15 +117,7 @@ export default function ReturnScreen({ onBack }: ReturnScreenProps) {
 
     return (
       <div className="min-h-screen bg-slate-50">
-        <div className="bg-white p-4 border-b border-slate-200 flex items-center">
-          <button
-            onClick={() => setSelectedCategory(null)}
-            className="text-blue-600 mr-4 p-2 hover:bg-blue-50 rounded-lg transition-colors"
-          >
-            ← Назад
-          </button>
-          <h1 className="text-lg font-bold text-slate-800">{category.label}</h1>
-        </div>
+        <ScreenHeader icon="↩️" title={category.label} onBack={() => setSelectedCategory(null)} />
 
         <div className="p-5 max-w-lg mx-auto">
           <p className="text-sm text-slate-500 mb-4">Выберите номенклатуру для возврата</p>
@@ -166,15 +159,7 @@ export default function ReturnScreen({ onBack }: ReturnScreenProps) {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="bg-white p-4 border-b border-slate-200 flex items-center">
-        <button
-          onClick={onBack}
-          className="text-blue-600 mr-4 p-2 hover:bg-blue-50 rounded-lg transition-colors"
-        >
-          ← Назад
-        </button>
-        <h1 className="text-lg font-bold text-slate-800">Оформить возврат</h1>
-      </div>
+      <ScreenHeader icon="↩️" title="Оформить возврат" onBack={onBack} />
 
       <div className="p-5 max-w-lg mx-auto">
         <div className="bg-white p-5 rounded-xl border border-slate-200">

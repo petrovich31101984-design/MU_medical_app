@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { api } from '../api';
+import ScreenHeader from '../components/ScreenHeader';
 
 interface SettingsScreenProps {
   onBack: () => void;
@@ -41,15 +42,7 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="bg-white p-4 border-b border-slate-200 flex items-center">
-        <button
-          onClick={onBack}
-          className="text-blue-600 mr-4 p-2 hover:bg-blue-50 rounded-lg transition-colors"
-        >
-          ← Назад
-        </button>
-        <h1 className="text-lg font-bold text-slate-800">⚙️ Настройки и информация</h1>
-      </div>
+      <ScreenHeader icon="⚙️" title="Настройки и информация" onBack={onBack} />
 
       <div className="p-5 max-w-lg mx-auto">
         <div className="bg-white p-5 rounded-xl border border-slate-200 mb-5">

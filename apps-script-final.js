@@ -305,7 +305,12 @@ function updateEmployeeData(id, updates) {
 }
 
 function updateEmployeeShiftData(id, shiftOpen) {
-  updateRow('Сотрудники', id, { 'Смена открыта': shiftOpen ? 'ДА' : 'НЕТ' });
+  // Открытие смены делает сотрудника «Активен», закрытие — «Неактивен»
+  // (как в скриптах приложения руководителя)
+  updateRow('Сотрудники', id, {
+    'Смена открыта': shiftOpen ? 'ДА' : 'НЕТ',
+    'Статус': shiftOpen ? 'Активен' : 'Неактивен'
+  });
 }
 
 function deleteEmployeeData(id) {
