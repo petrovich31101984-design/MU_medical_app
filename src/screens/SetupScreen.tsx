@@ -50,7 +50,7 @@ export default function SetupScreen({ onConnected, onBack }: SetupScreenProps) {
       <div className="flex-1 flex flex-col justify-center max-w-md mx-auto w-full">
         <div className="flex flex-col items-center mb-8">
           <img
-            src="https://raw.githubusercontent.com/petrovich31101984-design/MU_medical_app/creating-a-project-from-github-c0204/public/logo.png"
+            src={`${import.meta.env.BASE_URL}logo.png`}
             alt="АлкоСпас"
             className="w-24 h-24 mb-4 drop-shadow-lg rounded-2xl"
           />

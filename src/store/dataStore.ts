@@ -16,6 +16,12 @@ const writeCache = (key: string, data: unknown[]) => {
   localStorage.setItem(`cache_${key}`, JSON.stringify(data));
 };
 
+// Кэш сообщений — отдельно для каждого сотрудника: на общем телефоне
+// следующий сотрудник не должен увидеть переписку предыдущего.
+const messagesCacheKey = (employeeId: string) => `messages_${employeeId}`;
+// Старый общий кэш (без сотрудника) содержит чужую переписку — удаляем его
+try { localStorage.removeItem('cache_messages'); } catch { /* хранилище недоступно */ }
+
 // Сообщения, отправленные с этого устройства, которых ещё нет в ответе сервера.
 // Без этого автообновление (каждые 5 с) затирало только что отправленное сообщение,
 // пока Apps Script не запишет его в таблицу, и оно появлялось с задержкой.
@@ -52,7 +58,15 @@ interface DataStore {
   markMessagesAsRead: (messageIds: string[]) => Promise<void>;
   editMessage: (messageId: string, newText: string) => Promise<boolean>;
   deleteMessage: (messageId: string) => Promise<boolean>;
+  /** Очистить данные сотрудника в памяти (при выходе и входе) */
+  reset: () => void;
 }
+
+// Сотрудник, чьи сообщения сейчас в памяти (для ключа кэша при отправке/правке)
+let currentMessagesOwner = '';
+const writeMessagesCache = (messages: ChatMessage[]) => {
+  if (currentMessagesOwner) writeCache(messagesCacheKey(currentMessagesOwner), messages);
+};
 
 export const useDataStore = create<DataStore>((set, get) => ({
   nomenclature: [],
@@ -85,7 +99,10 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
   loadMessages: async (employeeId: string) => {
     set({ loading: true });
+    currentMessagesOwner = employeeId;
     const response = await api.getEmployeeMessages(employeeId);
+    // Пока шла загрузка, мог смениться сотрудник — чужой ответ не применяем
+    if (currentMessagesOwner !== employeeId) return;
     if (response.success && response.data) {
       const serverMessages = response.data;
       set(state => {
@@ -104,11 +121,11 @@ export const useDataStore = create<DataStore>((set, get) => ({
           (msg.id.startsWith('temp_') || pendingMessageIds.has(msg.id) || queuedIds.has(msg.id))
         );
         const allMessages = [...mergedServerMessages, ...localOnlyMessages];
-        writeCache('messages', allMessages);
+        writeCache(messagesCacheKey(employeeId), allMessages);
         return { messages: allMessages, loading: false };
       });
     } else {
-      set({ messages: readCache<ChatMessage>('messages'), loading: false });
+      set({ messages: readCache<ChatMessage>(messagesCacheKey(employeeId)), loading: false });
     }
   },
 
@@ -179,7 +196,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
     pendingMessageIds.add(newMessage.id);
     set(state => {
       const messages = [...state.messages, newMessage];
-      writeCache('messages', messages);
+      writeMessagesCache(messages);
       return { messages };
     });
 
@@ -188,7 +205,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
       pendingMessageIds.delete(newMessage.id);
       set(state => {
         const messages = state.messages.filter(item => item.id !== newMessage.id);
-        writeCache('messages', messages);
+        writeMessagesCache(messages);
         return { messages };
       });
     }
@@ -201,7 +218,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
       const messages = state.messages.map(message =>
         ids.has(message.id) ? { ...message, read: true } : message
       );
-      writeCache('messages', messages);
+      writeMessagesCache(messages);
       return { messages };
     });
 
@@ -213,7 +230,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
       const messages = state.messages.map(msg =>
         msg.id === messageId ? { ...msg, text: newText } : msg
       );
-      writeCache('messages', messages);
+      writeMessagesCache(messages);
       return { messages };
     });
     const response = await api.editMessage(messageId, newText);
@@ -223,10 +240,16 @@ export const useDataStore = create<DataStore>((set, get) => ({
   deleteMessage: async (messageId: string) => {
     set(state => {
       const messages = state.messages.filter(msg => msg.id !== messageId);
-      writeCache('messages', messages);
+      writeMessagesCache(messages);
       return { messages };
     });
     const response = await api.deleteMessage(messageId);
     return response.success;
+  },
+
+  reset: () => {
+    currentMessagesOwner = '';
+    pendingMessageIds.clear();
+    set({ expenseSheets: [], messages: [], loading: false });
   },
 }));

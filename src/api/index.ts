@@ -74,62 +74,34 @@ class ApiService {
 
   async authenticateEmployee(personalNumber: string, password: string): Promise<ApiResponse<Employee>> {
     try {
-      console.log('=== AUTHENTICATE EMPLOYEE ===');
-      console.log('Personal Number:', personalNumber);
-      console.log('Script URL:', this.scriptUrl);
-      
-      const response = await this.client.get(
-        `${this.scriptUrl}?action=authenticateEmployee&personalNumber=${personalNumber}&password=${password}`
-      );
-      
-      console.log('Response status:', response.status);
-      console.log('Response data:', response.data);
-      
+      // Параметры экранируются: иначе пароль с символами & # + % ломал вход
+      const response = await this.client.get(this.scriptUrl, {
+        params: {
+          action: 'authenticateEmployee',
+          personalNumber: personalNumber.trim(),
+          password,
+        },
+      });
+
       let data = response.data;
-      
-      if (Array.isArray(data)) {
-        console.log('Data is array, taking first element');
-        data = data[0];
-      }
-      
-      if (data && data.data && typeof data.data === 'object') {
-        console.log('Data has nested data field');
-        data = data.data;
-      }
-      
-      console.log('Final data:', data);
-      
+      if (Array.isArray(data)) data = data[0];
+      if (data && data.data && typeof data.data === 'object') data = data.data;
+
       if (data && typeof data === 'object') {
         if (data.success === false) {
-          console.log('Server returned success: false');
           return { success: false, error: data.error || 'Неверный персональный номер или пароль' };
         }
-        
         if (data.error && !data.id) {
-          console.log('Server returned error:', data.error);
           return { success: false, error: data.error };
         }
-        
-        if (!data.id) {
-          console.log('Missing required field: id');
-          return { success: false, error: 'Неверный персональный номер или пароль' };
-        }
-        
-        if (!data.fullName) {
-          console.log('Missing required field: fullName');
-          return { success: false, error: 'Неверный персональный номер или пароль' };
-        }
-        
-        if (!data.personalNumber) {
-          console.log('Missing required field: personalNumber');
+        if (!data.id || !data.fullName || !data.personalNumber) {
           return { success: false, error: 'Неверный персональный номер или пароль' };
         }
       }
-      
-      console.log('Authentication successful');
+
       return { success: true, data };
     } catch (error) {
-      console.error('Authentication error:', error);
+      console.error('Ошибка авторизации');
       return { success: false, error: 'Ошибка авторизации' };
     }
   }
@@ -290,7 +262,7 @@ class ApiService {
   async getEmployeeExpenseSheets(employeeId: string): Promise<ApiResponse<ExpenseSheet[]>> {
     try {
       const response = await this.client.get(
-        `${this.scriptUrl}?action=getEmployeeExpenseSheets&employeeId=${employeeId}`
+        `${this.scriptUrl}?action=getEmployeeExpenseSheets&employeeId=${encodeURIComponent(employeeId)}`
       );
       return { success: true, data: response.data };
     } catch (error) {
@@ -301,7 +273,7 @@ class ApiService {
   async getEmployeeMessages(employeeId: string): Promise<ApiResponse<ChatMessage[]>> {
     try {
       const response = await this.client.get(
-        `${this.scriptUrl}?action=getEmployeeMessages&employeeId=${employeeId}`
+        `${this.scriptUrl}?action=getEmployeeMessages&employeeId=${encodeURIComponent(employeeId)}`
       );
       return { success: true, data: response.data };
     } catch (error) {

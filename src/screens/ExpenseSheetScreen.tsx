@@ -43,7 +43,6 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
   const [showCategoryModal, setShowCategoryModal] = useState(false);
 
   useEffect(() => {
-    console.log('=== EXPENSE SHEET SCREEN MOUNTED ===');
     loadNomenclature();
   }, []);
 
@@ -52,28 +51,26 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
     const name = nomData.name || nomData.наименование || nomData.Наименование || nomData.productName || nomData.title || 'Препарат';
     const price = nomData.currentPrice || nomData.price || nomData.цена || nomData.Цена || 0;
     const category = nomData.category || nomData.категория || nomData.Категория || '';
-    
-    // Используем уникальный ключ (имя + индекс) как идентификатор
-    const uniqueId = uniqueKey;
-    
-    console.log('Adding item:', { uniqueId, name, price, category, quantity });
-    
+
+    // В лист сохраняется настоящий код номенклатуры (NOM-...), а не «название_номер»:
+    // иначе остатки руководителя сопоставлялись только по названию.
+    const nomenclatureId = String(nomData.ID ?? nomData.id ?? '').trim() || uniqueKey;
+    // Позиция уже есть в листе: по коду, а для старых листов — по названию
+    const isSameItem = (item: ExpenseItem) => item.nomenclatureId === nomenclatureId || item.name === name;
+
     setItems(prevItems => {
-      const existingItem = prevItems.find(i => i.nomenclatureId === uniqueId);
-      
+      const existingItem = prevItems.find(isSameItem);
+
       if (existingItem) {
-        // Если позиция уже есть - суммируем количество
-        console.log(`Position "${name}" already exists, summing quantities: ${existingItem.quantity} + ${quantity}`);
-        return prevItems.map(i => 
-          i.nomenclatureId === uniqueId 
-            ? { ...i, quantity: i.quantity + quantity, total: (i.quantity + quantity) * i.pricePerUnit }
+        // Позиция уже есть — суммируем количество (и переводим старую позицию на настоящий код)
+        return prevItems.map(i =>
+          isSameItem(i)
+            ? { ...i, nomenclatureId, quantity: i.quantity + quantity, total: (i.quantity + quantity) * i.pricePerUnit }
             : i
         );
       } else {
-        // Если позиции нет - добавляем новую
-        console.log(`Adding new position "${name}" with quantity ${quantity}`);
         return [...prevItems, {
-          nomenclatureId: uniqueId,
+          nomenclatureId,
           name: name,
           category: category,
           quantity: quantity,
@@ -488,12 +485,6 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
                 }).map((nom, index) => {
                   const nomData = nom as any;
 
-                  if (index === 0) {
-                    console.log('=== NOMENCLATURE STRUCTURE ===');
-                    console.log('First item:', nomData);
-                    console.log('All keys:', Object.keys(nomData));
-                  }
-
                   let name = '';
                   if (nomData.name && typeof nomData.name === 'string' && nomData.name.length > 0) {
                     name = nomData.name;
@@ -556,8 +547,6 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
             <button
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-lg mt-4 transition-colors"
               onClick={() => {
-                console.log('=== SAVE BUTTON CLICKED ===');
-                console.log('Quantities state:', quantities);
                 
                 let addedCount = 0;
                 
@@ -637,13 +626,11 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
                   if (qty > 0) {
                     const price = nomData.currentPrice || nomData.price || nomData.цена || nomData.Цена || 0;
                     
-                    console.log(`Adding ${name} with uniqueKey: ${uniqueKey}, qty: ${qty}`);
                     addItem({...nom, name, currentPrice: price}, qty, uniqueKey);
                     addedCount++;
                   }
                 });
                 
-                console.log(`Total items added: ${addedCount}`);
                 setQuantities({});
                 setShowNomenclaturePicker(false);
               }}

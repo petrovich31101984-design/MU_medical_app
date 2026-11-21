@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Employee, AuthState } from '../types';
+import { useDataStore } from './dataStore';
 
 interface AuthStore extends AuthState {
   login: (employee: Employee) => Promise<void>;
@@ -14,6 +15,8 @@ export const useAuthStore = create<AuthStore>((set) => ({
   token: null,
 
   login: async (employee: Employee) => {
+    // Данные предыдущего сотрудника на этом телефоне не должны попасть к новому
+    useDataStore.getState().reset();
     localStorage.setItem('employee', JSON.stringify(employee));
     localStorage.setItem('token', employee.id);
     
@@ -25,6 +28,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
   },
 
   logout: async () => {
+    useDataStore.getState().reset();
     localStorage.removeItem('employee');
     localStorage.removeItem('token');
     

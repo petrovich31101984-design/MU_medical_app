@@ -58,10 +58,6 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
   const handleSend = async () => {
     if (!newMessage.trim() || !employee) return;
 
-    console.log('=== MESSAGE SCREEN: Sending message ===');
-    console.log('New message:', newMessage);
-    console.log('Selected recipient:', selectedRecipient);
-    
     const messageText = newMessage; // Сохраняем текст перед очисткой
     setNewMessage(''); // Очищаем поле сразу
     
@@ -77,12 +73,7 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
       priority: 'Обычное',
     });
 
-    console.log('Send result:', success);
-
-    if (success) {
-      console.log('Message sent successfully');
-    } else {
-      console.error('Failed to send message');
+    if (!success) {
       setNewMessage(messageText); // Возвращаем текст, если отправка не удалась
     }
   };
@@ -149,14 +140,6 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
   const filteredMessages = messages.filter(msg => 
     msg.toId === selectedRecipient || msg.fromId === selectedRecipient
   );
-
-  console.log('=== MESSAGE FILTERING ===');
-  console.log('All messages count:', messages.length);
-  console.log('Selected recipient:', selectedRecipient);
-  console.log('Filtered messages count:', filteredMessages.length);
-  if (filteredMessages.length > 0) {
-    console.log('First filtered message:', filteredMessages[0]);
-  }
 
   const sortedMessages = [...filteredMessages].sort((a, b) => 
     new Date(a.date).getTime() - new Date(b.date).getTime()
