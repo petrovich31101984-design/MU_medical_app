@@ -14,21 +14,15 @@ export default function LoginScreen({ onNavigate }: LoginScreenProps) {
   const { login } = useAuthStore();
 
   const handleLogin = async () => {
-    console.log('=== LOGIN ATTEMPT ===');
-    console.log('Personal Number:', personalNumber);
-    console.log('Password length:', password.length);
     
     if (!personalNumber.trim() || !password.trim()) {
-      console.log('Validation failed: empty fields');
       setError('Заполните все поля');
       return;
     }
 
     const configUrl = api.getConfigUrl();
-    console.log('Config URL:', configUrl);
     
     if (!configUrl) {
-      console.log('No config URL found');
       setError('База данных не подключена. Обратитесь к администратору.');
       return;
     }
@@ -37,34 +31,28 @@ export default function LoginScreen({ onNavigate }: LoginScreenProps) {
     setError('');
     try {
       const response = await api.authenticateEmployee(personalNumber, password);
-      console.log('Auth response:', response);
       
       if (!response.success) {
-        console.log('Auth failed:', response.error);
         setError(response.error || 'Ошибка подключения к базе данных');
         setLoading(false);
         return;
       }
 
       if (!response.data) {
-        console.log('No data in response');
         setError('Неверный персональный номер или пароль');
         setLoading(false);
         return;
       }
 
       const data = response.data;
-      console.log('Employee data:', data);
       
       if (data.blocked) {
-        console.log('Account is blocked');
         setError('Ваш аккаунт заблокирован');
         setLoading(false);
         return;
       }
 
       if (data.status === 'Уволен') {
-        console.log('Account status is Уволен');
         setError('Ваш аккаунт уволен');
         setLoading(false);
         return;
@@ -76,9 +64,7 @@ export default function LoginScreen({ onNavigate }: LoginScreenProps) {
         personalNumber: data.personalNumber || personalNumber,
       };
       
-      console.log('Calling login with:', employeeData);
       await login(employeeData);
-      console.log('Login successful');
     } catch (err) {
       console.error('Login error:', err);
       setError('Ошибка подключения к базе данных. Проверьте соединение и попробуйте снова.');
@@ -91,7 +77,7 @@ export default function LoginScreen({ onNavigate }: LoginScreenProps) {
     <div className="min-h-screen bg-white flex flex-col justify-between p-5">
       <div className="flex flex-col items-center mt-8">
         <img
-          src="https://raw.githubusercontent.com/petrovich31101984-design/MU_medical_app/creating-a-project-from-github-c0204/public/logo.png"
+          src={`${import.meta.env.BASE_URL}logo.png`}
           alt="АлкоСпас"
           className="w-32 h-32 mb-5 drop-shadow-lg rounded-2xl"
         />

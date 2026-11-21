@@ -2,6 +2,45 @@ import { create } from 'zustand';
 import { Nomenclature, ExpenseSheet, ChatMessage, Announcement } from '../types';
 import { api } from '../api';
 
+const readCache = <T>(key: string): T[] => {
+  try {
+    const value = localStorage.getItem(`cache_${key}`);
+    const data = value ? JSON.parse(value) : [];
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeCache = (key: string, data: unknown[]) => {
+  localStorage.setItem(`cache_${key}`, JSON.stringify(data));
+};
+
+// Кэш сообщений — отдельно для каждого сотрудника: на общем телефоне
+// следующий сотрудник не должен увидеть переписку предыдущего.
+const messagesCacheKey = (employeeId: string) => `messages_${employeeId}`;
+// Старый общий кэш (без сотрудника) содержит чужую переписку — удаляем его
+try { localStorage.removeItem('cache_messages'); } catch { /* хранилище недоступно */ }
+
+// Сообщения, отправленные с этого устройства, которых ещё нет в ответе сервера.
+// Без этого автообновление (каждые 5 с) затирало только что отправленное сообщение,
+// пока Apps Script не запишет его в таблицу, и оно появлялось с задержкой.
+const pendingMessageIds = new Set<string>();
+
+// Сообщения, ожидающие отправки в офлайн-очереди (переживают перезагрузку приложения)
+const queuedMessageIds = (): Set<string> => {
+  try {
+    const queue = JSON.parse(localStorage.getItem('offlineSyncQueue') || '[]');
+    return new Set(
+      (Array.isArray(queue) ? queue : [])
+        .filter((item: any) => item?.action === 'addChatMessage' && item?.data?.id)
+        .map((item: any) => String(item.data.id))
+    );
+  } catch {
+    return new Set();
+  }
+};
+
 interface DataStore {
   nomenclature: Nomenclature[];
   expenseSheets: ExpenseSheet[];
@@ -14,10 +53,20 @@ interface DataStore {
   loadMessages: (employeeId: string) => Promise<void>;
   loadAnnouncements: () => Promise<void>;
   createExpenseSheet: (sheet: Omit<ExpenseSheet, 'id'>) => Promise<boolean>;
+  updateExpenseSheet: (sheet: ExpenseSheet) => Promise<boolean>;
   sendMessage: (message: Omit<ChatMessage, 'id' | 'date'>) => Promise<boolean>;
+  markMessagesAsRead: (messageIds: string[]) => Promise<void>;
   editMessage: (messageId: string, newText: string) => Promise<boolean>;
   deleteMessage: (messageId: string) => Promise<boolean>;
+  /** Очистить данные сотрудника в памяти (при выходе и входе) */
+  reset: () => void;
 }
+
+// Сотрудник, чьи сообщения сейчас в памяти (для ключа кэша при отправке/правке)
+let currentMessagesOwner = '';
+const writeMessagesCache = (messages: ChatMessage[]) => {
+  if (currentMessagesOwner) writeCache(messagesCacheKey(currentMessagesOwner), messages);
+};
 
 export const useDataStore = create<DataStore>((set, get) => ({
   nomenclature: [],
@@ -27,17 +76,13 @@ export const useDataStore = create<DataStore>((set, get) => ({
   loading: false,
 
   loadNomenclature: async () => {
-    console.log('=== LOADING NOMENCLATURE ===');
     set({ loading: true });
     const response = await api.getNomenclature();
-    console.log('Nomenclature response:', response);
-    
     if (response.success && response.data) {
-      console.log('Nomenclature loaded:', response.data.length, 'items');
+      writeCache('nomenclature', response.data);
       set({ nomenclature: response.data, loading: false });
     } else {
-      console.error('Failed to load nomenclature:', response.error);
-      set({ loading: false });
+      set({ nomenclature: readCache<Nomenclature>('nomenclature'), loading: false });
     }
   },
 
@@ -45,27 +90,42 @@ export const useDataStore = create<DataStore>((set, get) => ({
     set({ loading: true });
     const response = await api.getEmployeeExpenseSheets(employeeId);
     if (response.success && response.data) {
+      writeCache(`expenseSheets_${employeeId}`, response.data);
       set({ expenseSheets: response.data, loading: false });
     } else {
-      set({ loading: false });
+      set({ expenseSheets: readCache<ExpenseSheet>(`expenseSheets_${employeeId}`), loading: false });
     }
   },
 
   loadMessages: async (employeeId: string) => {
     set({ loading: true });
+    currentMessagesOwner = employeeId;
     const response = await api.getEmployeeMessages(employeeId);
+    // Пока шла загрузка, мог смениться сотрудник — чужой ответ не применяем
+    if (currentMessagesOwner !== employeeId) return;
     if (response.success && response.data) {
-      // Фильтруем временные сообщения (с ID начинающимся на 'temp_')
       const serverMessages = response.data;
       set(state => {
-        // Сохраняем временные сообщения из локального состояния
-        const tempMessages = state.messages.filter(msg => msg.id.startsWith('temp_'));
-        // Объединяем серверные сообщения с временными
-        const allMessages = [...serverMessages, ...tempMessages];
+        const locallyReadIds = new Set(
+          state.messages.filter(message => message.read).map(message => message.id)
+        );
+        const mergedServerMessages = serverMessages.map(message =>
+          locallyReadIds.has(message.id) ? { ...message, read: true } : message
+        );
+        const serverIds = new Set(serverMessages.map(message => String(message.id)));
+        // Сервер уже вернул сообщение — больше не нужно держать его локально
+        serverIds.forEach(id => pendingMessageIds.delete(id));
+        const queuedIds = queuedMessageIds();
+        const localOnlyMessages = state.messages.filter(msg =>
+          !serverIds.has(String(msg.id)) &&
+          (msg.id.startsWith('temp_') || pendingMessageIds.has(msg.id) || queuedIds.has(msg.id))
+        );
+        const allMessages = [...mergedServerMessages, ...localOnlyMessages];
+        writeCache(messagesCacheKey(employeeId), allMessages);
         return { messages: allMessages, loading: false };
       });
     } else {
-      set({ loading: false });
+      set({ messages: readCache<ChatMessage>(messagesCacheKey(employeeId)), loading: false });
     }
   },
 
@@ -73,90 +133,123 @@ export const useDataStore = create<DataStore>((set, get) => ({
     set({ loading: true });
     const response = await api.getAnnouncements();
     if (response.success && response.data) {
-      set({ announcements: response.data, loading: false });
+      const normalizedAnnouncements = response.data.map((ann: any) => {
+        const isActive = ann.active === true ||
+                        ann.active === 'ДА' ||
+                        ann['Активно'] === 'ДА' ||
+                        ann['Активно'] === true ||
+                        ann['Активно'] === 'true';
+
+        return {
+          ...ann,
+          id: ann.id || ann['ID'] || `ann-${Math.random()}`,
+          title: ann.title || ann['Заголовок'] || '',
+          text: ann.text || ann['Текст'] || '',
+          createdBy: ann.createdBy || ann['Кем создано'] || '',
+          date: ann.date || ann['Дата'] || new Date().toISOString(),
+          active: isActive
+        };
+      });
+      writeCache('announcements', normalizedAnnouncements);
+      set({ announcements: normalizedAnnouncements, loading: false });
     } else {
-      set({ loading: false });
+      set({ announcements: readCache<Announcement>('announcements'), loading: false });
     }
   },
 
   createExpenseSheet: async (sheet) => {
-    console.log('=== DATA STORE: Creating expense sheet ===');
-    console.log('Sheet data:', sheet);
-    
     const response = await api.createExpenseSheet(sheet);
-    console.log('API response:', response);
-    
-    if (response.success) {
-      console.log('Expense sheet created successfully');
-      const employeeId = sheet.employeeId;
-      await get().loadExpenseSheets(employeeId);
-      return true;
+    if (!response.success) return false;
+
+    if (response.queued) {
+      set(state => {
+        const localSheet = response.data || { ...sheet, id: `SHEET-${Date.now()}` };
+        const expenseSheets = [...state.expenseSheets, localSheet];
+        writeCache(`expenseSheets_${sheet.employeeId}`, expenseSheets);
+        return { expenseSheets };
+      });
     } else {
-      console.error('Failed to create expense sheet:', response.error);
-      return false;
+      await get().loadExpenseSheets(sheet.employeeId);
     }
+    return true;
+  },
+
+  updateExpenseSheet: async (sheet) => {
+    const response = await api.updateExpenseSheet(sheet);
+    if (!response.success) return false;
+
+    set(state => {
+      const expenseSheets = state.expenseSheets.map(item => item.id === sheet.id ? sheet : item);
+      writeCache(`expenseSheets_${sheet.employeeId}`, expenseSheets);
+      return { expenseSheets };
+    });
+    if (!response.queued) await get().loadExpenseSheets(sheet.employeeId);
+    return true;
   },
 
   sendMessage: async (message) => {
-    console.log('=== DATA STORE: Sending message ===');
-    console.log('Message:', message);
-    
-    // Оптимистичное обновление - добавляем сообщение сразу в локальное состояние
     const newMessage: ChatMessage = {
       ...message,
-      id: `temp_${Date.now()}`,
+      id: `MSG-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       date: new Date().toISOString(),
     };
-    
-    console.log('Adding message to local state immediately');
-    set(state => ({
-      messages: [...state.messages, newMessage]
-    }));
-    
-    const response = await api.sendMessage(message);
-    console.log('API response:', response);
-    
-    if (response.success) {
-      console.log('Message sent successfully to server');
-      // НЕ перезагружаем сообщения с сервера, чтобы не удалять локальное сообщение
-      // Сервер обработает сообщение в фоне
-      return true;
-    } else {
-      console.error('Failed to send message:', response.error);
-      return false;
+    pendingMessageIds.add(newMessage.id);
+    set(state => {
+      const messages = [...state.messages, newMessage];
+      writeMessagesCache(messages);
+      return { messages };
+    });
+
+    const response = await api.sendMessage(newMessage);
+    if (!response.success) {
+      pendingMessageIds.delete(newMessage.id);
+      set(state => {
+        const messages = state.messages.filter(item => item.id !== newMessage.id);
+        writeMessagesCache(messages);
+        return { messages };
+      });
     }
+    return response.success;
+  },
+
+  markMessagesAsRead: async (messageIds) => {
+    const ids = new Set(messageIds);
+    set(state => {
+      const messages = state.messages.map(message =>
+        ids.has(message.id) ? { ...message, read: true } : message
+      );
+      writeMessagesCache(messages);
+      return { messages };
+    });
+
+    await Promise.all(messageIds.map(messageId => api.markMessageAsRead(messageId)));
   },
 
   editMessage: async (messageId: string, newText: string) => {
-    console.log('=== DATA STORE: Editing message ===');
-    console.log('Message ID:', messageId);
-    console.log('New text:', newText);
-    
-    // Оптимистичное обновление
-    set(state => ({
-      messages: state.messages.map(msg => 
+    set(state => {
+      const messages = state.messages.map(msg =>
         msg.id === messageId ? { ...msg, text: newText } : msg
-      )
-    }));
-    
+      );
+      writeMessagesCache(messages);
+      return { messages };
+    });
     const response = await api.editMessage(messageId, newText);
-    console.log('API response:', response);
-    
     return response.success;
   },
 
   deleteMessage: async (messageId: string) => {
-    console.log('=== DATA STORE: Deleting message ===');
-    console.log('Message ID:', messageId);
-    
-    // Оптимистичное удаление
-    set(state => ({
-      messages: state.messages.filter(msg => msg.id !== messageId)
-    }));
-    
+    set(state => {
+      const messages = state.messages.filter(msg => msg.id !== messageId);
+      writeMessagesCache(messages);
+      return { messages };
+    });
     const response = await api.deleteMessage(messageId);
-    console.log('API response:', response);
-    
     return response.success;
+  },
+
+  reset: () => {
+    currentMessagesOwner = '';
+    pendingMessageIds.clear();
+    set({ expenseSheets: [], messages: [], loading: false });
   },
 }));

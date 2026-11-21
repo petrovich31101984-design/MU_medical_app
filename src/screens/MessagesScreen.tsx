@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useDataStore } from '../store/dataStore';
 import { ChatMessage } from '../types';
+import ScreenHeader from '../components/ScreenHeader';
 
 interface MessagesScreenProps {
   onBack: () => void;
@@ -9,7 +10,7 @@ interface MessagesScreenProps {
 
 export default function MessagesScreen({ onBack }: MessagesScreenProps) {
   const { employee } = useAuthStore();
-  const { messages, loadMessages, sendMessage, editMessage, deleteMessage } = useDataStore();
+  const { messages, loadMessages, sendMessage, markMessagesAsRead, editMessage, deleteMessage } = useDataStore();
   const [newMessage, setNewMessage] = useState('');
   const [selectedRecipient, setSelectedRecipient] = useState<'MGR' | 'STORE'>('MGR');
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -37,16 +38,26 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
   }, [employee]);
 
   useEffect(() => {
+    if (!employee) return;
+
+    const unreadIds = messages
+      .filter(message =>
+        message.toId === employee.id &&
+        message.fromId === selectedRecipient &&
+        !message.read
+      )
+      .map(message => message.id);
+
+    if (unreadIds.length > 0) void markMessagesAsRead(unreadIds);
+  }, [employee?.id, selectedRecipient, messages, markMessagesAsRead]);
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const handleSend = async () => {
     if (!newMessage.trim() || !employee) return;
 
-    console.log('=== MESSAGE SCREEN: Sending message ===');
-    console.log('New message:', newMessage);
-    console.log('Selected recipient:', selectedRecipient);
-    
     const messageText = newMessage; // Сохраняем текст перед очисткой
     setNewMessage(''); // Очищаем поле сразу
     
@@ -62,12 +73,7 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
       priority: 'Обычное',
     });
 
-    console.log('Send result:', success);
-
-    if (success) {
-      console.log('Message sent successfully');
-    } else {
-      console.error('Failed to send message');
+    if (!success) {
       setNewMessage(messageText); // Возвращаем текст, если отправка не удалась
     }
   };
@@ -135,38 +141,26 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
     msg.toId === selectedRecipient || msg.fromId === selectedRecipient
   );
 
-  console.log('=== MESSAGE FILTERING ===');
-  console.log('All messages count:', messages.length);
-  console.log('Selected recipient:', selectedRecipient);
-  console.log('Filtered messages count:', filteredMessages.length);
-  if (filteredMessages.length > 0) {
-    console.log('First filtered message:', filteredMessages[0]);
-  }
-
   const sortedMessages = [...filteredMessages].sort((a, b) => 
     new Date(a.date).getTime() - new Date(b.date).getTime()
   );
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      <div className="bg-white p-4 border-b border-slate-200 flex items-center justify-between">
-        <div className="flex items-center">
+      <ScreenHeader
+        icon="💬"
+        title="Сообщения"
+        onBack={onBack}
+        right={
           <button
-            onClick={onBack}
-            className="text-blue-600 mr-4 p-2 hover:bg-blue-50 rounded-lg transition-colors"
+            onClick={() => employee && loadMessages(employee.id)}
+            className="text-blue-600 p-2 hover:bg-blue-50 rounded-lg transition-colors"
+            title="Обновить сообщения"
           >
-            ← Назад
+            🔄
           </button>
-          <h1 className="text-lg font-bold text-slate-800">Сообщения</h1>
-        </div>
-        <button
-          onClick={() => employee && loadMessages(employee.id)}
-          className="text-blue-600 p-2 hover:bg-blue-50 rounded-lg transition-colors"
-          title="Обновить сообщения"
-        >
-          🔄
-        </button>
-      </div>
+        }
+      />
 
       {/* Выбор получателя */}
       <div className="bg-white p-3 border-b border-slate-200">

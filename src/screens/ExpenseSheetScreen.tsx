@@ -1,22 +1,59 @@
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useDataStore } from '../store/dataStore';
-import { ExpenseItem, Nomenclature } from '../types';
+import { ExpenseItem, ExpenseSheet, Nomenclature } from '../types';
+import ScreenHeader from '../components/ScreenHeader';
 
 interface ExpenseSheetScreenProps {
   onBack: () => void;
+  sheet?: ExpenseSheet;
 }
 
-export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) {
+const formatBirthDate = (value: string) => {
+  const digits = value.replace(/\D/g, '').slice(0, 8);
+
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
+
+  return `${digits.slice(0, 2)}.${digits.slice(2, 4)}.${digits.slice(4)}`;
+};
+
+// В лист расхода выбираются только ЛС ПКУ, ЛС и расходники (оборудование — нет).
+// Расходники в таблице могут называться «Расходники», «Расходный материал», «Расходные материалы».
+const isExpenseCategory = (nom: Nomenclature) => {
+  const data = nom as unknown as Record<string, unknown>;
+  const category = String(nom.category || data['Категория'] || '').trim().toLowerCase();
+  return category === 'лс пку' || category === 'лс' || category.startsWith('расход');
+};
+
+// Порядок в окне «Внесите количество»: ЛС ПКУ → ЛС (ампулы) → ЛС (штуки и др.) → расходные материалы;
+// внутри группы — по алфавиту
+const pickerGroup = (nom: Nomenclature) => {
+  const data = nom as unknown as Record<string, unknown>;
+  const category = String(nom.category || data['Категория'] || '').trim().toLowerCase();
+  const unit = String(nom.unit || data['Ед. измерения'] || '').trim().toLowerCase();
+  if (category === 'лс пку') return 0;
+  if (category === 'лс') return unit.startsWith('ампул') ? 1 : 2;
+  return 3;
+};
+
+const formatStoredBirthDate = (value: string) => {
+  const isoDate = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoDate) return `${isoDate[3]}.${isoDate[2]}.${isoDate[1]}`;
+  return formatBirthDate(value);
+};
+
+export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreenProps) {
   const { employee } = useAuthStore();
-  const { nomenclature, loading: nomenclatureLoading, loadNomenclature, createExpenseSheet } = useDataStore();
-  
-  const [patientName, setPatientName] = useState('');
-  const [patientBirthDate, setPatientBirthDate] = useState('');
-  const [callCategory, setCallCategory] = useState('');
-  const [therapyNames, setTherapyNames] = useState<string[]>(['']);
-  const [therapyCost, setTherapyCost] = useState('');
-  const [items, setItems] = useState<ExpenseItem[]>([]);
+  const { nomenclature, loading: nomenclatureLoading, loadNomenclature, createExpenseSheet, updateExpenseSheet } = useDataStore();
+  const isCreationBlocked = !sheet && !(employee?.status === 'Активен' || employee?.shiftOpen === true);
+
+  const [patientName, setPatientName] = useState(sheet?.patientName || '');
+  const [patientBirthDate, setPatientBirthDate] = useState(formatStoredBirthDate(sheet?.patientBirthDate || ''));
+  const [callCategory, setCallCategory] = useState(sheet?.callCategory || '');
+  const [therapyNames, setTherapyNames] = useState<string[]>(sheet?.therapyName ? sheet.therapyName.split(', ') : ['']);
+  const [therapyCost, setTherapyCost] = useState(sheet ? String(sheet.therapyCost) : '');
+  const [items, setItems] = useState<ExpenseItem[]>(sheet?.items || []);
   const [loading, setLoading] = useState(false);
   const [showNomenclaturePicker, setShowNomenclaturePicker] = useState(false);
   const [success, setSuccess] = useState('');
@@ -25,7 +62,6 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
   const [showCategoryModal, setShowCategoryModal] = useState(false);
 
   useEffect(() => {
-    console.log('=== EXPENSE SHEET SCREEN MOUNTED ===');
     loadNomenclature();
   }, []);
 
@@ -34,28 +70,26 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
     const name = nomData.name || nomData.наименование || nomData.Наименование || nomData.productName || nomData.title || 'Препарат';
     const price = nomData.currentPrice || nomData.price || nomData.цена || nomData.Цена || 0;
     const category = nomData.category || nomData.категория || nomData.Категория || '';
-    
-    // Используем уникальный ключ (имя + индекс) как идентификатор
-    const uniqueId = uniqueKey;
-    
-    console.log('Adding item:', { uniqueId, name, price, category, quantity });
-    
+
+    // В лист сохраняется настоящий код номенклатуры (NOM-...), а не «название_номер»:
+    // иначе остатки руководителя сопоставлялись только по названию.
+    const nomenclatureId = String(nomData.ID ?? nomData.id ?? '').trim() || uniqueKey;
+    // Позиция уже есть в листе: по коду, а для старых листов — по названию
+    const isSameItem = (item: ExpenseItem) => item.nomenclatureId === nomenclatureId || item.name === name;
+
     setItems(prevItems => {
-      const existingItem = prevItems.find(i => i.nomenclatureId === uniqueId);
-      
+      const existingItem = prevItems.find(isSameItem);
+
       if (existingItem) {
-        // Если позиция уже есть - суммируем количество
-        console.log(`Position "${name}" already exists, summing quantities: ${existingItem.quantity} + ${quantity}`);
-        return prevItems.map(i => 
-          i.nomenclatureId === uniqueId 
-            ? { ...i, quantity: i.quantity + quantity, total: (i.quantity + quantity) * i.pricePerUnit }
+        // Позиция уже есть — суммируем количество (и переводим старую позицию на настоящий код)
+        return prevItems.map(i =>
+          isSameItem(i)
+            ? { ...i, nomenclatureId, quantity: i.quantity + quantity, total: (i.quantity + quantity) * i.pricePerUnit }
             : i
         );
       } else {
-        // Если позиции нет - добавляем новую
-        console.log(`Adding new position "${name}" with quantity ${quantity}`);
         return [...prevItems, {
-          nomenclatureId: uniqueId,
+          nomenclatureId,
           name: name,
           category: category,
           quantity: quantity,
@@ -81,6 +115,11 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
   const totalAmount = items.reduce((sum, item) => sum + item.total, 0);
 
   const handleSubmit = async () => {
+    if (isCreationBlocked) {
+      setError('Для создания листа расхода откройте смену');
+      return;
+    }
+
     if (!patientName.trim()) {
       setError('Введите ФИО пациента');
       return;
@@ -96,32 +135,35 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
     try {
       const now = new Date();
       const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      
-      const result = await createExpenseSheet({
+      const sheetData = {
         employeeId: employee!.id,
         employeeName: employee!.fullName,
-        patientName,
+        patientName: patientName.trim(),
         patientBirthDate,
-        date: now.toISOString(),
-        month,
+        date: sheet?.date || now.toISOString(),
+        month: sheet?.month || month,
         callCategory,
         therapyName: therapyNames.join(', '),
         therapyCost: parseFloat(therapyCost) || 0,
         items,
         totalAmount,
-        archived: false,
-      });
-
-      console.log('Create expense sheet result:', result);
+        archived: sheet?.archived || false,
+      };
+      const result = sheet
+        ? await updateExpenseSheet({ ...sheet, ...sheetData })
+        : await createExpenseSheet(sheetData);
 
       if (result) {
-        setSuccess('Лист расхода создан!');
+        setSuccess(sheet
+          ? 'Изменения сохранены. При отсутствии сети они будут отправлены автоматически.'
+          : 'Лист расхода сохранён. При отсутствии сети он будет отправлен автоматически после её восстановления.'
+        );
         setTimeout(() => onBack(), 2000);
       } else {
-        setError('Не удалось создать лист расхода');
+        setError(sheet ? 'Не удалось сохранить изменения' : 'Не удалось создать лист расхода');
       }
     } catch (err) {
-      setError('Произошла ошибка при создании листа расхода');
+      setError(sheet ? 'Произошла ошибка при сохранении изменений' : 'Произошла ошибка при создании листа расхода');
     } finally {
       setLoading(false);
     }
@@ -129,15 +171,7 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="bg-white p-4 border-b border-slate-200 flex items-center relative">
-        <button
-          onClick={onBack}
-          className="text-blue-600 mr-4 p-2 hover:bg-blue-50 rounded-lg transition-colors"
-        >
-          ← Назад
-        </button>
-        <h1 className="text-lg font-bold text-slate-800 absolute left-1/2 transform -translate-x-1/2">Лист расхода</h1>
-      </div>
+      <ScreenHeader icon="📝" title={sheet ? 'Редактирование' : 'Лист расхода'} onBack={onBack} />
 
       <div className="p-5 max-w-lg mx-auto">
         <div className="bg-white p-5 rounded-xl border border-slate-200 mb-5">
@@ -158,9 +192,11 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
             <label className="text-sm text-slate-500 mb-2 block">Дата рождения</label>
             <input
               type="text"
+              inputMode="numeric"
+              maxLength={10}
               className="w-full border border-slate-200 rounded-lg p-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={patientBirthDate}
-              onChange={(e) => setPatientBirthDate(e.target.value)}
+              onChange={(e) => setPatientBirthDate(formatBirthDate(e.target.value))}
               placeholder="ДД.ММ.ГГГГ"
             />
           </div>
@@ -264,7 +300,7 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
               {therapyNames.map((name, index) => (
                 <div key={index} className="flex gap-2 mb-2">
                   <select
-                    className="flex-1 border border-slate-200 rounded-lg p-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    className="flex-1 min-w-0 w-full border border-slate-200 rounded-lg p-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                     value={name}
                     onChange={(e) => {
                       const newNames = [...therapyNames];
@@ -275,7 +311,7 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                     <option value="">Выберите тип терапии</option>
                     <option value="Восстановление стандарт">Восстановление стандарт</option>
                     <option value="Восстановление стандарт +">Восстановление стандарт +</option>
-                    <option value="Восстановление максимал">Восстановление максимал</option>
+                    <option value="Восстановление максимум">Восстановление максимум</option>
                     <option value="Восстановление + кардио">Восстановление + кардио</option>
                     <option value="Восстановление + нейрооптимизация (NO терапия)">Восстановление + нейрооптимизация (NO терапия)</option>
                     <option value="Нейро Рестарт">Нейро Рестарт</option>
@@ -346,9 +382,15 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
             <div key={item.nomenclatureId} className="bg-slate-50 p-3 rounded-lg mb-2 border border-slate-200">
               <div className="flex justify-between items-center">
                 <p className="text-sm text-slate-700 flex-1">{item.name}</p>
-                <span className="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded ml-2">
-                  {item.quantity} шт.
-                </span>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  aria-label={`Количество: ${item.name}`}
+                  value={item.quantity}
+                  onChange={event => updateQuantity(item.nomenclatureId, parseInt(event.target.value) || 0)}
+                  className="w-20 text-sm font-medium text-blue-600 bg-blue-50 px-3 py-2 rounded ml-2 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
             </div>
           ))}
@@ -367,10 +409,16 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
           </div>
         )}
 
+        {isCreationBlocked && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+            <p className="text-sm text-amber-700">Для создания листа расхода откройте смену на главном экране.</p>
+          </div>
+        )}
+
         <button
           className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-lg transition-colors disabled:opacity-50"
           onClick={handleSubmit}
-          disabled={loading}
+          disabled={loading || isCreationBlocked || !patientName.trim() || items.length === 0}
         >
           {loading ? (
             <span className="flex items-center justify-center">
@@ -378,10 +426,10 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
-              Создание...
+              {sheet ? 'Сохранение...' : 'Создание...'}
             </span>
           ) : (
-            'Создать лист расхода'
+            sheet ? 'Сохранить изменения' : 'Создать лист расхода'
           )}
         </button>
       </div>
@@ -389,7 +437,7 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
       {showNomenclaturePicker && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-5 w-full max-w-md max-h-[80vh] flex flex-col">
-            <h3 className="text-xl font-bold text-slate-800 mb-4">Выберите препарат</h3>
+            <h3 className="text-xl font-bold text-slate-800 mb-4">Внесите количество</h3>
             <div className="overflow-y-auto flex-1">
               {nomenclatureLoading ? (
                 <div className="flex flex-col items-center justify-center py-8">
@@ -410,7 +458,9 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                   </button>
                 </div>
               ) : (
-                [...nomenclature].sort((a, b) => {
+                [...nomenclature].filter(isExpenseCategory).sort((a, b) => {
+                  const byGroup = pickerGroup(a) - pickerGroup(b);
+                  if (byGroup !== 0) return byGroup;
                   const russianAlphabet = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ';
                   const getName = (nom: any) => {
                     if (nom.name && typeof nom.name === 'string' && nom.name.length > 0) return nom.name;
@@ -455,12 +505,6 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                   return nameA.length - nameB.length;
                 }).map((nom, index) => {
                   const nomData = nom as any;
-
-                  if (index === 0) {
-                    console.log('=== NOMENCLATURE STRUCTURE ===');
-                    console.log('First item:', nomData);
-                    console.log('All keys:', Object.keys(nomData));
-                  }
 
                   let name = '';
                   if (nomData.name && typeof nomData.name === 'string' && nomData.name.length > 0) {
@@ -524,13 +568,13 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
             <button
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-lg mt-4 transition-colors"
               onClick={() => {
-                console.log('=== SAVE BUTTON CLICKED ===');
-                console.log('Quantities state:', quantities);
                 
                 let addedCount = 0;
                 
-                // Создаём отсортированный массив с уникальными ключами
-                const sortedNomenclature = [...nomenclature].sort((a, b) => {
+                // Тот же список и порядок, что на экране выбора — иначе количества попадут не к тем позициям
+                const sortedNomenclature = [...nomenclature].filter(isExpenseCategory).sort((a, b) => {
+                  const byGroup = pickerGroup(a) - pickerGroup(b);
+                  if (byGroup !== 0) return byGroup;
                   const russianAlphabet = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ';
                   const getName = (nom: any) => {
                     if (nom.name && typeof nom.name === 'string' && nom.name.length > 0) return nom.name;
@@ -605,13 +649,11 @@ export default function ExpenseSheetScreen({ onBack }: ExpenseSheetScreenProps) 
                   if (qty > 0) {
                     const price = nomData.currentPrice || nomData.price || nomData.цена || nomData.Цена || 0;
                     
-                    console.log(`Adding ${name} with uniqueKey: ${uniqueKey}, qty: ${qty}`);
                     addItem({...nom, name, currentPrice: price}, qty, uniqueKey);
                     addedCount++;
                   }
                 });
                 
-                console.log(`Total items added: ${addedCount}`);
                 setQuantities({});
                 setShowNomenclaturePicker(false);
               }}
