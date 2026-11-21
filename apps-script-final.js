@@ -1,9 +1,10 @@
 /**
  * СМУ - Система Медицинского Учёта
  * Google Apps Script Web App для руководителя + сотрудника
- * Версия 0.5.5
+ * Версия 0.5.6
  *  - getEmployees отдаёт список без паролей; getEmployeeWorkState — смена одного сотрудника
  *  - запись в таблицу (doPost) выполняется по одной, через блокировку
+ *  - updateReturn: руководитель подтверждает, корректирует или отклоняет возврат
  */
 
 // ==================== ГЛАВНЫЕ ФУНКЦИИ ====================
@@ -149,6 +150,10 @@ function handlePost(e) {
       // Возвраты
       case 'addReturn':
         addReturnData(data);
+        return jsonResponse({ success: true });
+      case 'updateReturn':
+        // Подтверждение / корректировка / отклонение возврата руководителем
+        updateRow('Возвраты', data.id, data.data);
         return jsonResponse({ success: true });
 
       // Чат
