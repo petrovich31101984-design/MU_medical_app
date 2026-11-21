@@ -1,7 +1,9 @@
 /**
  * СМУ - Система Медицинского Учёта
  * Google Apps Script Web App для руководителя + сотрудника
- * Версия 0.5.4
+ * Версия 0.5.5
+ *  - getEmployees отдаёт список без паролей; getEmployeeWorkState — смена одного сотрудника
+ *  - запись в таблицу (doPost) выполняется по одной, через блокировку
  */
 
 // ==================== ГЛАВНЫЕ ФУНКЦИИ ====================
@@ -18,7 +20,11 @@ function doGet(e) {
           sheets: SpreadsheetApp.getActiveSpreadsheet().getSheets().map(s => s.getName())
         });
       case 'getEmployees':
-        return jsonResponse(getEmployeesData());
+        // Без паролей: список видят приложения руководителя и сотрудников
+        return jsonResponse(getPublicEmployeesData());
+      case 'getEmployeeWorkState':
+        // Смена, блокировка и статус одного сотрудника — для приложения сотрудника
+        return jsonResponse(getEmployeeWorkStateData(e.parameter.employeeId));
       case 'getNomenclature':
         return jsonResponse(getNomenclatureData());
       case 'getPrices':
@@ -53,7 +59,19 @@ function doGet(e) {
   }
 }
 
+// Записи выполняются по одной: иначе при одновременном сохранении
+// строки могли сдвинуться и изменение попадало не в ту строку
 function doPost(e) {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(20000)) return jsonResponse({ error: 'Сервер занят, попробуйте ещё раз' });
+  try {
+    return handlePost(e);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function handlePost(e) {
   try {
     const body = JSON.parse(e.postData.contents);
     const action = body.action;
@@ -293,7 +311,36 @@ function deleteRow(sheetName, id) {
 // ==================== СОТРУДНИКИ ====================
 
 function getEmployeesData() {
+  // Полные строки, вместе с паролями — только для проверки входа внутри скрипта
   return readSheetData('Сотрудники');
+}
+
+// Колонки, которые никогда не отдаются наружу
+var EMPLOYEE_SECRET_COLUMNS = ['Пароль', 'Пароль (хэш)'];
+
+function getPublicEmployeesData() {
+  return getEmployeesData().map(function (row) {
+    var copy = {};
+    Object.keys(row).forEach(function (key) {
+      if (EMPLOYEE_SECRET_COLUMNS.indexOf(key) === -1) copy[key] = row[key];
+    });
+    return copy;
+  });
+}
+
+function getEmployeeWorkStateData(employeeId) {
+  var searchId = String(employeeId || '').trim();
+  if (!searchId) return { success: false, error: 'Не указан сотрудник' };
+  var employee = getEmployeesData().find(function (row) {
+    return String(row['ID']).trim() === searchId;
+  });
+  if (!employee) return { success: false, error: 'Сотрудник не найден' };
+  return {
+    success: true,
+    shiftOpen: employee['Смена открыта'] === 'ДА' || employee['Смена открыта'] === true,
+    blocked: employee['Заблокирован'] === 'ДА' || employee['Заблокирован'] === true,
+    status: String(employee['Статус'] || '').trim()
+  };
 }
 
 function addEmployeeData(data) {

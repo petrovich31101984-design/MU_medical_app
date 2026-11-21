@@ -18,6 +18,25 @@ const formatBirthDate = (value: string) => {
   return `${digits.slice(0, 2)}.${digits.slice(2, 4)}.${digits.slice(4)}`;
 };
 
+// В лист расхода выбираются только ЛС ПКУ, ЛС и расходники (оборудование — нет).
+// Расходники в таблице могут называться «Расходники», «Расходный материал», «Расходные материалы».
+const isExpenseCategory = (nom: Nomenclature) => {
+  const data = nom as unknown as Record<string, unknown>;
+  const category = String(nom.category || data['Категория'] || '').trim().toLowerCase();
+  return category === 'лс пку' || category === 'лс' || category.startsWith('расход');
+};
+
+// Порядок в окне «Внесите количество»: ЛС ПКУ → ЛС (ампулы) → ЛС (штуки и др.) → расходные материалы;
+// внутри группы — по алфавиту
+const pickerGroup = (nom: Nomenclature) => {
+  const data = nom as unknown as Record<string, unknown>;
+  const category = String(nom.category || data['Категория'] || '').trim().toLowerCase();
+  const unit = String(nom.unit || data['Ед. измерения'] || '').trim().toLowerCase();
+  if (category === 'лс пку') return 0;
+  if (category === 'лс') return unit.startsWith('ампул') ? 1 : 2;
+  return 3;
+};
+
 const formatStoredBirthDate = (value: string) => {
   const isoDate = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (isoDate) return `${isoDate[3]}.${isoDate[2]}.${isoDate[1]}`;
@@ -418,7 +437,7 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
       {showNomenclaturePicker && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-5 w-full max-w-md max-h-[80vh] flex flex-col">
-            <h3 className="text-xl font-bold text-slate-800 mb-4">Выберите препарат</h3>
+            <h3 className="text-xl font-bold text-slate-800 mb-4">Внесите количество</h3>
             <div className="overflow-y-auto flex-1">
               {nomenclatureLoading ? (
                 <div className="flex flex-col items-center justify-center py-8">
@@ -439,7 +458,9 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
                   </button>
                 </div>
               ) : (
-                [...nomenclature].sort((a, b) => {
+                [...nomenclature].filter(isExpenseCategory).sort((a, b) => {
+                  const byGroup = pickerGroup(a) - pickerGroup(b);
+                  if (byGroup !== 0) return byGroup;
                   const russianAlphabet = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ';
                   const getName = (nom: any) => {
                     if (nom.name && typeof nom.name === 'string' && nom.name.length > 0) return nom.name;
@@ -550,8 +571,10 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
                 
                 let addedCount = 0;
                 
-                // Создаём отсортированный массив с уникальными ключами
-                const sortedNomenclature = [...nomenclature].sort((a, b) => {
+                // Тот же список и порядок, что на экране выбора — иначе количества попадут не к тем позициям
+                const sortedNomenclature = [...nomenclature].filter(isExpenseCategory).sort((a, b) => {
+                  const byGroup = pickerGroup(a) - pickerGroup(b);
+                  if (byGroup !== 0) return byGroup;
                   const russianAlphabet = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ';
                   const getName = (nom: any) => {
                     if (nom.name && typeof nom.name === 'string' && nom.name.length > 0) return nom.name;

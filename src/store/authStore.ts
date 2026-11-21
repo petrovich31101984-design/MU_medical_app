@@ -1,6 +1,16 @@
 import { create } from 'zustand';
 import { Employee, AuthState } from '../types';
 import { useDataStore } from './dataStore';
+import { api } from '../api';
+
+// «Последний вход» раньше никто не записывал — в профиле оставалась старая дата из таблицы.
+// Теперь время ставится при входе и при каждом открытии приложения с сохранённым входом
+// и отправляется в лист «Сотрудники» (без сети — через очередь отправки).
+const withLoginTime = (employee: Employee): Employee => {
+  const at = new Date().toISOString();
+  void api.recordLastLogin(employee.id, at);
+  return { ...employee, lastActivity: at };
+};
 
 interface AuthStore extends AuthState {
   login: (employee: Employee) => Promise<void>;
@@ -14,9 +24,10 @@ export const useAuthStore = create<AuthStore>((set) => ({
   employee: null,
   token: null,
 
-  login: async (employee: Employee) => {
+  login: async (loggedIn: Employee) => {
     // Данные предыдущего сотрудника на этом телефоне не должны попасть к новому
     useDataStore.getState().reset();
+    const employee = withLoginTime(loggedIn);
     localStorage.setItem('employee', JSON.stringify(employee));
     localStorage.setItem('token', employee.id);
     
@@ -45,7 +56,8 @@ export const useAuthStore = create<AuthStore>((set) => ({
       const token = localStorage.getItem('token');
       
       if (employeeJson && token) {
-        const employee = JSON.parse(employeeJson) as Employee;
+        const employee = withLoginTime(JSON.parse(employeeJson) as Employee);
+        localStorage.setItem('employee', JSON.stringify(employee));
         set({
           isAuthenticated: true,
           employee,

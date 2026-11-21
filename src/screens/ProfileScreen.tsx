@@ -105,7 +105,9 @@ export default function ProfileScreen({ onBack, onEditExpenseSheet }: ProfileScr
             <div className="flex justify-between items-center py-3">
               <span className="text-sm text-slate-500">Последний вход</span>
               <span className="text-sm text-slate-800 font-medium">
-                {new Date(employee.lastActivity).toLocaleString('ru-RU')}
+                {new Date(employee.lastActivity).toLocaleString('ru-RU', {
+                  day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+                })}
               </span>
             </div>
           )}

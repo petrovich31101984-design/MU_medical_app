@@ -336,6 +336,27 @@ class ApiService {
 
   async getEmployeeWorkState(employeeId: string): Promise<ApiResponse<{ shiftOpen: boolean; blocked: boolean; status?: string }>> {
     try {
+      // Новый запрос: только смена, блокировка и статус этого сотрудника.
+      // Раньше телефон каждые 5 секунд скачивал весь лист «Сотрудники» — с паролями,
+      // телефонами и email всех сотрудников.
+      const own = await this.client.get(this.scriptUrl, {
+        params: { action: 'getEmployeeWorkState', employeeId: String(employeeId).trim() },
+      });
+      if (own.data && typeof own.data.shiftOpen === 'boolean') {
+        return {
+          success: true,
+          data: {
+            shiftOpen: own.data.shiftOpen,
+            blocked: own.data.blocked === true,
+            status: String(own.data.status ?? '').trim() || undefined,
+          },
+        };
+      }
+      if (own.data?.success === false && !String(own.data?.error ?? '').startsWith('Неизвестное действие')) {
+        return { success: false, error: own.data.error || 'Ошибка обновления статуса сотрудника' };
+      }
+
+      // Старый скрипт ещё без getEmployeeWorkState — временно по-старому
       const response = await this.client.get(`${this.scriptUrl}?action=getEmployees`);
       const employees = Array.isArray(response.data) ? response.data : response.data?.data;
       if (!Array.isArray(employees)) {
@@ -360,6 +381,14 @@ class ApiService {
     } catch (error) {
       return { success: false, error: 'Ошибка обновления статуса сотрудника' };
     }
+  }
+
+  /** Записать время входа в колонку «Последний вход» листа «Сотрудники» */
+  async recordLastLogin(employeeId: string, at: string): Promise<ApiResponse<void>> {
+    return this.saveMutation('updateEmployee', {
+      id: employeeId,
+      data: { 'Последний вход': at },
+    });
   }
 
   async openShift(employeeId: string): Promise<ApiResponse<void>> {
