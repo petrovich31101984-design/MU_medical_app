@@ -174,11 +174,10 @@
     </div>
     <script>
       // Скрывает загрузочный экран: вызывается из main.tsx после запуска React.
-      // Ждёт, пока логотип соберётся (~2.9 с), чтобы анимация не обрывалась.
+      // Экран показывается минимум 7 с (приложение тем временем грузится), дольше — если данные ещё не загружены.
       (function () {
         var t0 = Date.now();
-        var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-        var MIN = reduce ? 400 : 2900;
+        var MIN = 7000;
         window.smuHideSplash = function () {
           var el = document.getElementById('smu-splash');
           if (!el || el.getAttribute('data-hiding')) return;
