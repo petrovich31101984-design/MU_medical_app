@@ -139,7 +139,7 @@ export default function App() {
             {/* Логотип в центре с мерцанием */}
             <img
               src={`${import.meta.env.BASE_URL}logo.png`}
-              alt="АлкоСпас"
+              alt="СМУ"
               className="w-24 h-24 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-2xl animate-pulse"
             />
             

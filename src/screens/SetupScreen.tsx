@@ -51,12 +51,11 @@ export default function SetupScreen({ onConnected, onBack }: SetupScreenProps) {
         <div className="flex flex-col items-center mb-8">
           <img
             src={`${import.meta.env.BASE_URL}logo.png`}
-            alt="АлкоСпас"
+            alt="СМУ"
             className="w-24 h-24 mb-4 drop-shadow-lg rounded-2xl"
           />
           <h1 className="text-2xl font-bold mb-1">
-            <span className="text-blue-700">Алко</span>
-            <span className="text-red-600">Спас</span>
+            <span className="text-blue-700">СМУ</span>
           </h1>
           <p className="text-sm text-slate-500 text-center">
             Система медицинского учета
@@ -107,7 +106,7 @@ export default function SetupScreen({ onConnected, onBack }: SetupScreenProps) {
       </div>
 
       <p className="text-center text-slate-400 text-xs">
-        © {new Date().getFullYear()} АлкоСпас • Выездная медицинская помощь <span className="text-green-600">(v. 0.1)</span>
+        © {new Date().getFullYear()} СМУ • Выездная медицинская помощь <span className="text-green-600">(v. 0.5.5)</span>
       </p>
     </div>
   );

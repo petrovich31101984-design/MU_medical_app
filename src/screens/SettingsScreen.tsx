@@ -114,13 +114,13 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
             
             <div className="flex justify-between items-center py-2">
               <span className="text-sm text-slate-500">Версия</span>
-              <span className="text-sm text-green-600 font-medium">v. 0.1</span>
+              <span className="text-sm text-green-600 font-medium">v. 0.5.5</span>
             </div>
           </div>
         </div>
 
         <p className="text-center text-slate-400 text-xs mt-5">
-          © {new Date().getFullYear()} АлкоСпас • Выездная медицинская помощь
+          © {new Date().getFullYear()} СМУ • Выездная медицинская помощь
         </p>
       </div>
     </div>
