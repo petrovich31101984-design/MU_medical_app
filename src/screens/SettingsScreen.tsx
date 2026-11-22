@@ -120,7 +120,7 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
         </div>
 
         <p className="text-center text-slate-400 text-xs mt-5">
-          © {new Date().getFullYear()} СМУ • Выездная медицинская помощь
+          © {new Date().getFullYear()} СМУ • Выездная медицинская помощь • Петрович Е.В.
         </p>
       </div>
     </div>
