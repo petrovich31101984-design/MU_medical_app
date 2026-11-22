@@ -37,15 +37,33 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
     }
   }, [employee]);
 
+  // Непрочитанные входящие от руководителя / кладовщика
+  const isUnreadFrom = (message: ChatMessage, from: 'MGR' | 'STORE') =>
+    !!employee &&
+    String(message.toId) === String(employee.id) &&
+    String(message.fromId) === from &&
+    !message.read;
+  const unreadCount = (from: 'MGR' | 'STORE') =>
+    messages.filter(message => isUnreadFrom(message, from)).length;
+
+  // При открытии экрана сразу показать вкладку, где есть новые сообщения
+  // (если новые есть у обоих — ту, где сообщение пришло позже)
+  const initialTabChosenRef = useRef(false);
+  useEffect(() => {
+    if (initialTabChosenRef.current || !employee || messages.length === 0) return;
+    initialTabChosenRef.current = true;
+    const latestUnread = (from: 'MGR' | 'STORE') =>
+      Math.max(0, ...messages.filter(m => isUnreadFrom(m, from)).map(m => new Date(m.date).getTime() || 1));
+    const mgr = latestUnread('MGR');
+    const store = latestUnread('STORE');
+    if (store > mgr) setSelectedRecipient('STORE');
+  }, [employee?.id, messages]);
+
   useEffect(() => {
     if (!employee) return;
 
     const unreadIds = messages
-      .filter(message =>
-        message.toId === employee.id &&
-        message.fromId === selectedRecipient &&
-        !message.read
-      )
+      .filter(message => isUnreadFrom(message, selectedRecipient))
       .map(message => message.id);
 
     if (unreadIds.length > 0) void markMessagesAsRead(unreadIds);
@@ -137,8 +155,8 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
     }
   };
 
-  const filteredMessages = messages.filter(msg => 
-    msg.toId === selectedRecipient || msg.fromId === selectedRecipient
+  const filteredMessages = messages.filter(msg =>
+    String(msg.toId) === selectedRecipient || String(msg.fromId) === selectedRecipient
   );
 
   const sortedMessages = [...filteredMessages].sort((a, b) => 
@@ -174,10 +192,18 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
                   ? 'bg-blue-600 border-blue-600 text-white'
                   : 'border-slate-200 text-slate-700 hover:bg-slate-50'
               }`}
-              onClick={() => setSelectedRecipient(key as 'MGR' | 'STORE')}
+              onClick={() => {
+                initialTabChosenRef.current = true;
+                setSelectedRecipient(key as 'MGR' | 'STORE');
+              }}
             >
               <span className="mr-1">{recipient.icon}</span>
               {recipient.name}
+              {selectedRecipient !== key && unreadCount(key as 'MGR' | 'STORE') > 0 && (
+                <span className="ml-2 inline-flex items-center justify-center bg-red-600 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1.5">
+                  {unreadCount(key as 'MGR' | 'STORE')}
+                </span>
+              )}
             </button>
           ))}
         </div>

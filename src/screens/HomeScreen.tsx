@@ -70,9 +70,15 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
     }
   };
 
-  const unreadMessages = messages.filter(message =>
-    message.toId === employee?.id && !message.read
-  ).length;
+  const unreadIncoming = messages.filter(message =>
+    !!employee && String(message.toId) === String(employee.id) && !message.read
+  );
+  const unreadMessages = unreadIncoming.length;
+  // От кого пришли новые сообщения: «руководитель», «кладовщик»
+  const unreadSenders = [
+    unreadIncoming.some(message => String(message.fromId) === 'MGR') && 'руководитель',
+    unreadIncoming.some(message => String(message.fromId) === 'STORE') && 'кладовщик',
+  ].filter(Boolean).join(', ');
   
   // Функция для проверки активности объявления (поддержка разных форматов)
   const isAnnouncementActive = (announcement: any) => {
@@ -169,7 +175,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
             <p className="text-base font-bold text-slate-800">Сообщения</p>
             <p className="text-sm text-slate-500 mt-1">
               {unreadMessages > 0
-                ? `${unreadMessages} непрочитанных`
+                ? `${unreadMessages} непрочитанных${unreadSenders ? ` (${unreadSenders})` : ''}`
                 : 'Нет новых сообщений'}
             </p>
           </div>
