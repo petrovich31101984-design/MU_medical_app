@@ -12,7 +12,23 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
   const { employee } = useAuthStore();
   const { messages, loadMessages, sendMessage, markMessagesAsRead, editMessage, deleteMessage } = useDataStore();
   const [newMessage, setNewMessage] = useState('');
-  const [selectedRecipient, setSelectedRecipient] = useState<'MGR' | 'STORE'>('MGR');
+  // Непрочитанные входящие от руководителя / кладовщика
+  const isUnreadFrom = (message: ChatMessage, from: 'MGR' | 'STORE') =>
+    !!employee &&
+    String(message.toId) === String(employee.id) &&
+    String(message.fromId) === from &&
+    !message.read;
+  // Вкладка с новыми сообщениями; если новые есть у обоих — та, где сообщение пришло позже
+  const pickTab = (list: ChatMessage[]): 'MGR' | 'STORE' => {
+    const latestUnread = (from: 'MGR' | 'STORE') =>
+      Math.max(0, ...list.filter(m => isUnreadFrom(m, from)).map(m => new Date(m.date).getTime() || 1));
+    return latestUnread('STORE') > latestUnread('MGR') ? 'STORE' : 'MGR';
+  };
+  // Вкладку выбираем сразу при открытии (сообщения уже в памяти после главного экрана).
+  // Пока вкладка не выбрана, ничего не отмечаем прочитанным — иначе сообщения
+  // другой вкладки помечались прочитанными, хотя их не видели.
+  const [selectedRecipient, setSelectedRecipient] = useState<'MGR' | 'STORE'>(() => pickTab(messages));
+  const [tabChosen, setTabChosen] = useState(() => messages.length > 0);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
   const [contextMenuMessageId, setContextMenuMessageId] = useState<string | null>(null);
@@ -37,37 +53,26 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
     }
   }, [employee]);
 
-  // Непрочитанные входящие от руководителя / кладовщика
-  const isUnreadFrom = (message: ChatMessage, from: 'MGR' | 'STORE') =>
-    !!employee &&
-    String(message.toId) === String(employee.id) &&
-    String(message.fromId) === from &&
-    !message.read;
   const unreadCount = (from: 'MGR' | 'STORE') =>
     messages.filter(message => isUnreadFrom(message, from)).length;
 
-  // При открытии экрана сразу показать вкладку, где есть новые сообщения
-  // (если новые есть у обоих — ту, где сообщение пришло позже)
-  const initialTabChosenRef = useRef(false);
+  // Если при открытии сообщений ещё не было — выбрать вкладку, когда они загрузятся
   useEffect(() => {
-    if (initialTabChosenRef.current || !employee || messages.length === 0) return;
-    initialTabChosenRef.current = true;
-    const latestUnread = (from: 'MGR' | 'STORE') =>
-      Math.max(0, ...messages.filter(m => isUnreadFrom(m, from)).map(m => new Date(m.date).getTime() || 1));
-    const mgr = latestUnread('MGR');
-    const store = latestUnread('STORE');
-    if (store > mgr) setSelectedRecipient('STORE');
-  }, [employee?.id, messages]);
+    if (tabChosen || !employee || messages.length === 0) return;
+    setSelectedRecipient(pickTab(messages));
+    setTabChosen(true);
+  }, [tabChosen, employee?.id, messages]);
 
+  // Отмечаем прочитанными только сообщения открытой вкладки и только после выбора вкладки
   useEffect(() => {
-    if (!employee) return;
+    if (!employee || !tabChosen) return;
 
     const unreadIds = messages
       .filter(message => isUnreadFrom(message, selectedRecipient))
       .map(message => message.id);
 
     if (unreadIds.length > 0) void markMessagesAsRead(unreadIds);
-  }, [employee?.id, selectedRecipient, messages, markMessagesAsRead]);
+  }, [employee?.id, tabChosen, selectedRecipient, messages, markMessagesAsRead]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -193,7 +198,7 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
                   : 'border-slate-200 text-slate-700 hover:bg-slate-50'
               }`}
               onClick={() => {
-                initialTabChosenRef.current = true;
+                setTabChosen(true);
                 setSelectedRecipient(key as 'MGR' | 'STORE');
               }}
             >
