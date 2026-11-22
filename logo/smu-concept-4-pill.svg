@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>СМУ — Капсула</title>
+  <!-- Концепт 4: надпись «СМУ» на двухцветной капсуле -->
+  <defs>
+    <clipPath id="pill"><rect x="32" y="166" width="448" height="180" rx="90"/></clipPath>
+  </defs>
+  <g clip-path="url(#pill)">
+    <rect x="32" y="166" width="224" height="180" fill="#FA0202"/>
+    <rect x="256" y="166" width="224" height="180" fill="#0202FA"/>
+    <rect x="252" y="166" width="8" height="180" fill="#FFFFFF"/>
+  </g>
+  <rect x="32" y="166" width="448" height="180" rx="90" fill="none" stroke="#1C1F24" stroke-width="10"/>
+  <text x="256" y="256" dy="43" text-anchor="middle"
+        font-family="Bahnschrift, 'Arial Narrow', Arial, sans-serif" font-weight="700" font-size="120" letter-spacing="6"
+        fill="#FFFFFF" stroke="#1C1F24" stroke-width="4" stroke-linejoin="round" paint-order="stroke">СМУ</text>
+</svg>

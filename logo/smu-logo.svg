@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>СМУ</title>
+  <!-- Белая подложка внутри кольца -->
+  <circle cx="256" cy="256" r="214" fill="#FFFFFF"/>
+  <!-- Зелёное кольцо -->
+  <circle cx="256" cy="256" r="232" fill="none" stroke="#2E9E4F" stroke-width="36"/>
+  <!-- Красный медицинский крест -->
+  <g fill="#D7262E">
+    <rect x="186" y="70" width="140" height="372" rx="18"/>
+    <rect x="70" y="186" width="372" height="140" rx="18"/>
+  </g>
+  <!-- Синие буквы СМУ с белой обводкой для читаемости на кресте -->
+  <text x="256" y="256" dy="0.35em" text-anchor="middle"
+        font-family="'Arial Black', 'Segoe UI Black', Arial, Helvetica, sans-serif"
+        font-weight="900" font-size="150" letter-spacing="2"
+        fill="#1557B0" stroke="#FFFFFF" stroke-width="12" stroke-linejoin="round"
+        paint-order="stroke">СМУ</text>
+</svg>

@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>СМУ — объёмный</title>
+  <!-- Вариант 2: объёмный значок -->
+  <defs>
+    <linearGradient id="ring" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7BEFB2"/>
+      <stop offset="0.5" stop-color="#22B36B"/>
+      <stop offset="1" stop-color="#0A6E3D"/>
+    </linearGradient>
+    <linearGradient id="inner" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E9F1F7"/>
+    </linearGradient>
+    <linearGradient id="cross" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FF6B6B"/>
+      <stop offset="1" stop-color="#B71C1C"/>
+    </linearGradient>
+    <linearGradient id="letters" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7CC4FF"/>
+      <stop offset="1" stop-color="#1255B8"/>
+    </linearGradient>
+  </defs>
+
+  <circle cx="256" cy="256" r="200" fill="url(#inner)"/>
+
+  <!-- Кольцо с фаской -->
+  <circle cx="256" cy="256" r="227" fill="none" stroke="#06502C" stroke-width="56"/>
+  <circle cx="256" cy="256" r="227" fill="none" stroke="url(#ring)" stroke-width="46"/>
+  <circle cx="256" cy="256" r="203" fill="none" stroke="#06502C" stroke-opacity="0.35" stroke-width="5"/>
+
+  <!-- Крест с тенью и бликом -->
+  <path transform="translate(5 7)" fill="#000000" fill-opacity="0.18"
+        d="M204 76 H308 A16 16 0 0 1 324 92 V188 H420 A16 16 0 0 1 436 204 V308 A16 16 0 0 1 420 324 H324 V420 A16 16 0 0 1 308 436 H204 A16 16 0 0 1 188 420 V324 H92 A16 16 0 0 1 76 308 V204 A16 16 0 0 1 92 188 H188 V92 A16 16 0 0 1 204 76 Z"/>
+  <path d="M204 76 H308 A16 16 0 0 1 324 92 V188 H420 A16 16 0 0 1 436 204 V308 A16 16 0 0 1 420 324 H324 V420 A16 16 0 0 1 308 436 H204 A16 16 0 0 1 188 420 V324 H92 A16 16 0 0 1 76 308 V204 A16 16 0 0 1 92 188 H188 V92 A16 16 0 0 1 204 76 Z"
+        fill="url(#cross)" stroke="#7F0E0E" stroke-width="5"/>
+  <rect x="200" y="84" width="112" height="22" rx="11" fill="#FFFFFF" fill-opacity="0.3"/>
+
+  <!-- СМУ с выдавливанием -->
+  <g text-anchor="middle" font-family="'Arial Black', 'Segoe UI Black', Arial, sans-serif" font-weight="900" font-size="132">
+    <text x="256" y="264" dy="0.35em" fill="#0B2560">СМУ</text>
+    <text x="256" y="262" dy="0.35em" fill="#0B2560">СМУ</text>
+    <text x="256" y="260" dy="0.35em" fill="#0D2D72">СМУ</text>
+    <text x="256" y="258" dy="0.35em" fill="#0F3584">СМУ</text>
+    <text x="256" y="256" dy="0.35em" fill="url(#letters)" stroke="#FFFFFF" stroke-width="4" stroke-linejoin="round">СМУ</text>
+  </g>
+
+  <!-- Надписи по кольцу -->
+  <path id="arcTop" d="M 125.8 441.9 A 227 227 0 1 1 386.2 441.9" fill="none"/>
+  <path id="arcBottom" d="M 29 256 A 227 227 0 0 0 483 256" fill="none"/>
+  <g font-family="'Arial Black', 'Segoe UI Black', Arial, sans-serif" font-weight="900" fill="#FFFFFF"
+     stroke="#06502C" stroke-width="4" stroke-linejoin="round" paint-order="stroke" dominant-baseline="central">
+    <text font-size="30"><textPath href="#arcTop" startOffset="50%" text-anchor="middle" textLength="1100" lengthAdjust="spacing">СИСТЕМА МЕДИЦИНСКОГО УЧЁТА</textPath></text>
+    <text font-size="24"><textPath href="#arcBottom" startOffset="50%" text-anchor="middle">0.5.5</textPath></text>
+  </g>
+</svg>

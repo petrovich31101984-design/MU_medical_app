@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>СМУ — печать</title>
+  <!-- Вариант 3: в стиле официальной печати -->
+  <circle cx="256" cy="256" r="200" fill="#FFFFFF"/>
+
+  <!-- Кольцо с двойным ободом и точечной окантовкой -->
+  <circle cx="256" cy="256" r="227" fill="none" stroke="#1C1F24" stroke-width="46"/>
+  <circle cx="256" cy="256" r="252" fill="none" stroke="#1C1F24" stroke-width="3"/>
+  <circle cx="256" cy="256" r="196" fill="none" stroke="#1C1F24" stroke-width="3"/>
+
+  <!-- Крест с внутренней белой линией -->
+  <path d="M204 80 H308 A14 14 0 0 1 322 94 V190 H418 A14 14 0 0 1 432 204 V308 A14 14 0 0 1 418 322 H322 V418 A14 14 0 0 1 308 432 H204 A14 14 0 0 1 190 418 V322 H94 A14 14 0 0 1 80 308 V204 A14 14 0 0 1 94 190 H190 V94 A14 14 0 0 1 204 80 Z"
+        fill="#FA0202"/>
+  <path d="M202 92 H310 V202 H420 V310 H310 V420 H202 V310 H92 V202 H202 Z"
+        fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linejoin="round"/>
+
+  <!-- СМУ полужирным шрифтом -->
+  <text x="256" y="256" dy="39.2" text-anchor="middle"
+        font-family="Bahnschrift, 'Arial Narrow', Arial, sans-serif" font-weight="600" font-size="110" letter-spacing="3"
+        fill="#0202FA" stroke="#FFFFFF" stroke-width="3" stroke-linejoin="round" paint-order="stroke">СМУ</text>
+</svg>
