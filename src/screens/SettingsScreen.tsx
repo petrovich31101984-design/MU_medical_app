@@ -114,7 +114,7 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
             
             <div className="flex justify-between items-center py-2">
               <span className="text-sm text-slate-500">Версия</span>
-              <span className="text-sm text-green-600 font-medium">v. 0.5.5</span>
+              <span className="text-sm text-green-600 font-medium">v.0.5.5</span>
             </div>
           </div>
         </div>

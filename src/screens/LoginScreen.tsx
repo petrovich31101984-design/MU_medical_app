@@ -144,7 +144,7 @@ export default function LoginScreen({ onNavigate }: LoginScreenProps) {
           ⚙️ Настройка подключения к БД
         </button>
         <p className="text-center text-slate-400 text-xs">
-          © {new Date().getFullYear()} СМУ • Выездная медицинская помощь <span className="text-green-600">(v. 0.5.5)</span>
+          © {new Date().getFullYear()} СМУ • Выездная медицинская помощь <span className="text-green-600">(v.0.5.5)</span>
         </p>
       </div>
     </div>
