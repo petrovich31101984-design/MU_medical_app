@@ -133,7 +133,7 @@ export default function App() {
   // Если конфигурация ещё не загружена, показываем загрузку
   if (isConfigured === null || (isConfigured === true && isAuthenticated && initialStockStatus === 'checking')) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div data-smu-loading className="min-h-screen bg-white flex items-center justify-center">
         <div className="flex flex-col items-center">
           <div className="relative w-32 h-32 mb-4">
             {/* Логотип в центре с мерцанием */}
