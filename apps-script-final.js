@@ -6,6 +6,7 @@
  *  - запись в таблицу (doPost) выполняется по одной, через блокировку
  *  - updateReturn: руководитель подтверждает, корректирует или отклоняет возврат
  *  - повторная отправка из офлайн-очереди телефона не создаёт дублей листов расхода, возвратов и сообщений
+ *  - правка/удаление уже удалённого сообщения не считается ошибкой (очередь телефона не застревает)
  */
 
 // ==================== ГЛАВНЫЕ ФУНКЦИИ ====================
@@ -161,16 +162,18 @@ function handlePost(e) {
       case 'addChatMessage':
         addChatMessageData(data);
         return jsonResponse({ success: true });
+      // Сообщение могли уже удалить (или это повтор из офлайн-очереди телефона) —
+      // «не найдено» не ошибка, иначе очередь на телефоне застрянет на этой записи
       case 'updateChatMessage': {
         const { id, ...updates } = data;
-        updateChatMessageData(id, updates);
+        ignoreNotFound(() => updateChatMessageData(id, updates));
         return jsonResponse({ success: true });
       }
       case 'editChatMessage':
-        updateChatMessageData(data.id, { 'Текст': data.text });
+        ignoreNotFound(() => updateChatMessageData(data.id, { 'Текст': data.text }));
         return jsonResponse({ success: true });
       case 'deleteChatMessage':
-        deleteChatMessageData(data.id);
+        ignoreNotFound(() => deleteChatMessageData(data.id));
         return jsonResponse({ success: true });
 
       // Объявления
@@ -201,6 +204,15 @@ function handlePost(e) {
 }
 
 // ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
+
+// Выполнить действие; ошибку «Запись с ID … не найдена» пропустить
+function ignoreNotFound(action) {
+  try {
+    action();
+  } catch (error) {
+    if (String(error).indexOf('не найдена') === -1) throw error;
+  }
+}
 
 function jsonResponse(data) {
   return ContentService
