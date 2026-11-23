@@ -3,6 +3,7 @@ import { useAuthStore } from '../store/authStore';
 import { useDataStore } from '../store/dataStore';
 import { api } from '../api';
 import NetworkStatus from '../components/NetworkStatus';
+import NewYearGarland from '../components/NewYearGarland';
 import { logoutButtonClass } from '../components/ScreenHeader';
 
 interface HomeScreenProps {
@@ -11,7 +12,7 @@ interface HomeScreenProps {
 
 export default function HomeScreen({ onNavigate }: HomeScreenProps) {
   const { employee, logout, updateShift } = useAuthStore();
-  const { announcements, messages, loadMessages } = useDataStore();
+  const { announcements, messages, loadMessages, loadAnnouncements, garland } = useDataStore();
   const [shiftStatus, setShiftStatus] = useState(false);
   const [shiftMessage, setShiftMessage] = useState('');
 
@@ -37,7 +38,9 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
       void loadMessages(employee.id);
       void refreshWorkState();
     }, 5000);
-    return () => clearInterval(interval);
+    // Объявления (и включённая руководителем гирлянда) — раз в 30 с, без перезахода в приложение
+    const announcementsInterval = setInterval(() => { void loadAnnouncements(); }, 30000);
+    return () => { clearInterval(interval); clearInterval(announcementsInterval); };
   }, [employee?.id]);
 
   const handleToggleShift = async () => {
@@ -145,6 +148,9 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
           )}
         </div>
       </div>
+
+      {/* Новогодняя гирлянда под объявлением — включает руководитель в «Декорирование приложения» */}
+      {garland && <NewYearGarland className="-mt-2 -mb-3" />}
 
       {/* Menu */}
       <div className="p-5 space-y-3">
