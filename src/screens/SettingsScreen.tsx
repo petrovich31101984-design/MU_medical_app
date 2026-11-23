@@ -41,10 +41,10 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
       <ScreenHeader icon="⚙️" title="Настройки и информация" onBack={onBack} />
 
-      <div className="p-5 max-w-lg mx-auto">
+      <div className="p-5 max-w-lg mx-auto w-full flex-1 flex flex-col">
         <div className="bg-white p-5 rounded-xl border border-slate-200 mb-5">
           <h2 className="text-lg font-bold text-slate-800 mb-4">Подключение к базе данных</h2>
           
@@ -119,7 +119,8 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
           </div>
         </div>
 
-        <p className="text-center text-slate-400 text-xs mt-5">
+        {/* Подпись © — в самом низу экрана */}
+        <p className="text-center text-slate-400 text-xs mt-auto pt-5">
           © {new Date().getFullYear()} СМУ • Выездная медицинская помощь • Петрович Е.В.
         </p>
       </div>
