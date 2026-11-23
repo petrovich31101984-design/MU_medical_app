@@ -1,10 +1,8 @@
 // Новогодняя хвойная гирлянда (как в приложениях руководителя и кладовщика).
-// На главном экране обрамляет объявление (GarlandFrame), когда руководитель включил её в «Декорирование приложения».
-// Ветки рисуются иглами из псевдослучайных (но всегда одинаковых) штрихов; на них красные шары,
+// На главном экране висит полосой сразу под шапкой, когда руководитель включил её в «Декорирование приложения».
+// Ветки рисуются иглами из псевдослучайных (но всегда одинаковых) штрихов; на них разноцветные шары,
 // золотые звёзды, снежинка, шишка и мерцающие золотые блики. Фрагмент шириной TILE_W повторяется,
 // лишнее обрезается по ширине экрана.
-
-import type { ReactNode } from 'react';
 
 const TILE_W = 200;
 const TILE_H = 52;
@@ -62,20 +60,10 @@ const GARLAND_BALL_COLORS: Array<[string, string, string]> = [
   ['#ffffff', '#cbd5e1', '#64748b'],
   ['#fbcfe8', '#db2777', '#831843'],
 ];
-// Фрагмент гирлянды. vertical — повёрнут на 90° (для боковых сторон рамки), scale — уменьшение.
-function Tile({ index, vertical = false, scale = 1 }: { index: number; vertical?: boolean; scale?: number }) {
-  const w = TILE_W * scale;
-  const h = TILE_H * scale;
+// Один фрагмент гирлянды
+function Tile({ index }: { index: number }) {
   return (
-    <svg
-      width={vertical ? h : w}
-      height={vertical ? w : h}
-      viewBox={vertical ? `0 0 ${TILE_H} ${TILE_W}` : `0 0 ${TILE_W} ${TILE_H}`}
-      overflow="visible"
-      className="shrink-0"
-    >
-      {/* Поворот: ось гирлянды идёт сверху вниз */}
-      <g transform={vertical ? `translate(${TILE_H} 0) rotate(90)` : undefined}>
+    <svg width={TILE_W} height={TILE_H} viewBox={`0 0 ${TILE_W} ${TILE_H}`} overflow="visible" className="shrink-0">
       {NEEDLES.map((d, i) => (
         <path key={i} d={d} stroke={NEEDLE_STYLES[i].stroke} strokeWidth={NEEDLE_STYLES[i].width} strokeLinecap="round" fill="none" />
       ))}
@@ -107,7 +95,6 @@ function Tile({ index, vertical = false, scale = 1 }: { index: number; vertical?
       {GLINTS.map(([x, y, s], i) => (
         <path key={i} d={glintPath(x, y, s)} className="garland-glint" style={{ animationDelay: `${((index * 3 + i * 5) % 12) * 0.25}s` }} />
       ))}
-      </g>
     </svg>
   );
 }
@@ -134,40 +121,6 @@ function GarlandDefs() {
           </filter>
         </defs>
       </svg>
-  );
-}
-
-// Толщина гирлянды в рамке и насколько рамка выступает за края объявления
-const FRAME_SCALE = 0.7;
-const FRAME_THICK = Math.round(TILE_H * FRAME_SCALE); // ≈ 36 px
-const FRAME_PAD = 22; // ветки ложатся на край объявления, захватывая его рамку
-
-/**
- * Рамка из хвойной гирлянды вокруг содержимого (объявления): ветки сверху, снизу и по бокам.
- * Гирлянда лежит поверх краёв и не перехватывает нажатия; лишние фрагменты обрезаются по размеру.
- */
-export function GarlandFrame({ children, className = '' }: { children: ReactNode; className?: string }) {
-  const strip = 'absolute overflow-hidden pointer-events-none flex z-10';
-  return (
-    <div className={`relative ${className}`} style={{ padding: FRAME_PAD }}>
-      <GarlandDefs />
-      {children}
-      <div aria-hidden="true">
-        {/* Боковые — под верхней и нижней, чтобы углы были пышнее, но ровнее */}
-        <div className={`${strip} flex-col items-center`} style={{ left: FRAME_PAD - FRAME_THICK / 2, top: 0, bottom: 0, width: FRAME_THICK }}>
-          {Array.from({ length: 6 }, (_, i) => <Tile key={i} index={i + 1} vertical scale={FRAME_SCALE} />)}
-        </div>
-        <div className={`${strip} flex-col items-center`} style={{ right: FRAME_PAD - FRAME_THICK / 2, top: 0, bottom: 0, width: FRAME_THICK }}>
-          {Array.from({ length: 6 }, (_, i) => <Tile key={i} index={i + 4} vertical scale={FRAME_SCALE} />)}
-        </div>
-        <div className={`${strip} items-center`} style={{ top: FRAME_PAD - FRAME_THICK / 2, left: 0, right: 0, height: FRAME_THICK }}>
-          {Array.from({ length: 6 }, (_, i) => <Tile key={i} index={i} scale={FRAME_SCALE} />)}
-        </div>
-        <div className={`${strip} items-center`} style={{ bottom: FRAME_PAD - FRAME_THICK / 2, left: 0, right: 0, height: FRAME_THICK }}>
-          {Array.from({ length: 6 }, (_, i) => <Tile key={i} index={i + 2} scale={FRAME_SCALE} />)}
-        </div>
-      </div>
-    </div>
   );
 }
 
