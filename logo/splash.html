@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>СМУ — загрузка</title>
+<style>
+  /* ===== Splash: всё, что ниже до "демо", переносится в index.html приложений ===== */
+  #smu-splash {
+    position: fixed; inset: 0; z-index: 9999;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px;
+    background: #FFFFFF;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    transition: opacity .45s ease, visibility .45s ease;
+  }
+  #smu-splash.smu-hide { opacity: 0; visibility: hidden; }
+  #smu-splash svg { width: min(42vw, 180px); height: auto; overflow: visible; }
+
+  /* рамка прорисовывается контуром — после того, как упали все кубики */
+  .smu-frame {
+    stroke-dasharray: 1700; stroke-dashoffset: 1700;
+    animation: smu-draw .7s 1.8s cubic-bezier(.6,0,.3,1) forwards;
+  }
+  @keyframes smu-draw { to { stroke-dashoffset: 0; } }
+
+  /* кубики падают сверху, приземляются с «приплющиванием» */
+  .smu-block {
+    transform-box: fill-box; transform-origin: 50% 100%;
+    opacity: 0;
+    animation: smu-fall .62s cubic-bezier(.5,0,.75,0) forwards, smu-squash .38s ease-out forwards;
+  }
+  @keyframes smu-fall {
+    0%   { opacity: 0; transform: translateY(-560px); }
+    15%  { opacity: 1; }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes smu-squash {
+    0%   { scale: 1 1; }
+    30%  { scale: 1.14 .8; }
+    60%  { scale: .95 1.06; }
+    100% { scale: 1 1; }
+  }
+  /* порядок как в «тетрисе»: низ → бока → красный центр → верх */
+  .smu-b1 { animation-delay: .10s, .72s; }
+  .smu-b2 { animation-delay: .35s, .97s; }
+  .smu-b3 { animation-delay: .50s, 1.12s; }
+  .smu-b4 { animation-delay: .80s, 1.42s; }
+  .smu-b5 { animation-delay: 1.15s, 1.77s; }
+
+  /* после сборки — мягкое «дыхание» всего логотипа, пока грузится приложение */
+  .smu-logo { transform-box: fill-box; transform-origin: center;
+    animation: smu-pop .5s 2.5s ease-out, smu-breathe 1.8s 3.1s ease-in-out infinite; }
+  @keyframes smu-pop { 40% { transform: scale(1.06); } }
+  @keyframes smu-breathe { 50% { transform: scale(.97); } }
+
+  .smu-title, .smu-sub { opacity: 0; animation: smu-fade .5s forwards; }
+  .smu-title { font-size: 28px; font-weight: 800; letter-spacing: .18em; animation-delay: 2.55s; margin: 0; }
+  .smu-sub   { font-size: 14px; color: #5B616B; animation-delay: 2.7s; margin: -20px 0 0; }
+  @keyframes smu-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+  .smu-ver { color: #16A34A; font-weight: 600; }
+
+  /* буквы СМУ подпрыгивают волной: С — синяя, М — красная, У — синяя */
+  .smu-title span { display: inline-block; color: #0202FA; animation: smu-dot 1.2s 3s infinite ease-in-out; }
+  .smu-title span:nth-child(2) { color: #FA0202; animation-delay: 3.15s; }
+  .smu-title span:nth-child(3) { animation-delay: 3.3s; }
+  @keyframes smu-dot { 0%, 80%, 100% { transform: translateY(0); opacity: 1; } 40% { transform: translateY(-8px); opacity: .55; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    #smu-splash *, #smu-splash *::before { animation-duration: 0s !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; }
+  }
+  /* ===== конец splash ===== */
+
+  /* демо-панель (только для просмотра) */
+  .demo { position: fixed; z-index: 10000; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; }
+  .demo button { font: 600 14px system-ui; padding: 10px 16px; border-radius: 10px; border: 1px solid #1C1F24; background: #fff; color: #1C1F24; cursor: pointer; }
+  .demo button.primary { background: #0202FA; color: #fff; border-color: #0202FA; }
+</style>
+</head>
+<body style="margin:0;background:#F3F4F6">
+
+<div id="smu-splash" role="status" aria-label="Загрузка СМУ">
+  <svg viewBox="0 0 512 512" aria-hidden="true">
+    <g class="smu-logo">
+      <rect class="smu-frame" x="24" y="24" width="464" height="464" rx="108" fill="#FFFFFF" stroke="#1C1F24" stroke-width="16"/>
+      <rect class="smu-block smu-b1" x="201" y="325" width="110" height="110" rx="24" fill="#0202FA"/>
+      <rect class="smu-block smu-b2" x="77"  y="201" width="110" height="110" rx="24" fill="#0202FA"/>
+      <rect class="smu-block smu-b3" x="325" y="201" width="110" height="110" rx="24" fill="#0202FA"/>
+      <rect class="smu-block smu-b4" x="201" y="201" width="110" height="110" rx="24" fill="#FA0202"/>
+      <rect class="smu-block smu-b5" x="201" y="77"  width="110" height="110" rx="24" fill="#0202FA"/>
+    </g>
+  </svg>
+  <p class="smu-title"><span>С</span><span>М</span><span>У</span></p>
+  <p class="smu-sub">Система медицинского учёта <span class="smu-ver">(v.0.5.5)</span></p>
+</div>
+
+<div class="demo">
+  <button class="primary" onclick="replay()">↻ Повторить</button>
+  <button onclick="document.getElementById('smu-splash').classList.toggle('smu-hide')">Скрыть / показать</button>
+</div>
+
+<script>
+  function replay() {
+    const s = document.getElementById('smu-splash');
+    s.classList.remove('smu-hide');
+    const clone = s.cloneNode(true);
+    s.replaceWith(clone);
+  }
+</script>
+</body>
+</html>

@@ -41,14 +41,23 @@ class ApiService {
   private async postToServer(action: string, data: unknown): Promise<void> {
     if (!this.scriptUrl) throw new Error('Не настроен адрес базы данных');
 
-    const response = await fetch(this.scriptUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action, data }),
-    });
-    if (!response.ok) throw new Error(`Ошибка сервера: ${response.status}`);
-
-    const result = await response.json();
+    // При слабой связи запрос может «висеть» минутами — тогда вся очередь стоит.
+    // Обрываем через 45 с: запись останется в очереди и уйдёт при следующей попытке.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 45000);
+    let result: any;
+    try {
+      const response = await fetch(this.scriptUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action, data }),
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error(`Ошибка сервера: ${response.status}`);
+      result = await response.json();
+    } finally {
+      clearTimeout(timer);
+    }
     if (!result.success || result.error) {
       throw new Error(result.error || 'Сервер не подтвердил сохранение');
     }

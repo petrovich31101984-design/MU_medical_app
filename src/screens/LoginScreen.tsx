@@ -78,12 +78,11 @@ export default function LoginScreen({ onNavigate }: LoginScreenProps) {
       <div className="flex flex-col items-center mt-8">
         <img
           src={`${import.meta.env.BASE_URL}logo.png`}
-          alt="АлкоСпас"
+          alt="СМУ"
           className="w-32 h-32 mb-5 drop-shadow-lg rounded-2xl"
         />
         <h1 className="text-3xl font-bold mb-1">
-          <span className="text-blue-700">Алко</span>
-          <span className="text-red-600">Спас</span>
+          <span className="text-blue-700">СМУ</span>
         </h1>
         <p className="text-sm text-slate-500">Система медицинского учета</p>
       </div>
@@ -145,7 +144,7 @@ export default function LoginScreen({ onNavigate }: LoginScreenProps) {
           ⚙️ Настройка подключения к БД
         </button>
         <p className="text-center text-slate-400 text-xs">
-          © {new Date().getFullYear()} АлкоСпас • Выездная медицинская помощь <span className="text-green-600">(v. 0.1)</span>
+          © {new Date().getFullYear()} СМУ • Выездная медицинская помощь <span className="text-green-600">(v.0.5.5)</span>
         </p>
       </div>
     </div>

@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useDataStore } from '../store/dataStore';
 import { api } from '../api';
+import { getQueuedItems } from '../store/syncStore';
 import NetworkStatus from '../components/NetworkStatus';
+import NewYearGarland from '../components/NewYearGarland';
 import { logoutButtonClass } from '../components/ScreenHeader';
 
 interface HomeScreenProps {
@@ -11,7 +13,7 @@ interface HomeScreenProps {
 
 export default function HomeScreen({ onNavigate }: HomeScreenProps) {
   const { employee, logout, updateShift } = useAuthStore();
-  const { announcements, messages, loadMessages } = useDataStore();
+  const { announcements, messages, loadMessages, loadAnnouncements, garland } = useDataStore();
   const [shiftStatus, setShiftStatus] = useState(false);
   const [shiftMessage, setShiftMessage] = useState('');
 
@@ -27,8 +29,14 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
         return;
       }
 
-      setShiftStatus(response.data.shiftOpen);
-      updateShift(response.data.shiftOpen, response.data.status);
+      // Смену открыли/закрыли без связи, а запись ещё в очереди — сервер пока знает старое
+      // состояние. Верим телефону, иначе смена «закрывалась» бы и лист расхода был недоступен.
+      const queuedShift = getQueuedItems()
+        .filter(item => item.action === 'updateEmployeeShift' && String(item.data?.id) === String(employee.id))
+        .pop();
+      const shiftOpen = queuedShift ? queuedShift.data.shiftOpen === true : response.data.shiftOpen;
+      setShiftStatus(shiftOpen);
+      updateShift(shiftOpen, queuedShift ? undefined : response.data.status);
     };
 
     setShiftStatus(employee.shiftOpen === true);
@@ -37,7 +45,16 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
       void loadMessages(employee.id);
       void refreshWorkState();
     }, 5000);
-    return () => clearInterval(interval);
+    // Объявления (и включённая руководителем гирлянда) — раз в 30 с, без перезахода в приложение
+    const announcementsInterval = setInterval(() => { void loadAnnouncements(); }, 30000);
+    // Свёрнутое приложение таймеры «усыпляет» — при возврате на экран обновляем объявления сразу
+    const onVisible = () => { if (!document.hidden) void loadAnnouncements(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(interval);
+      clearInterval(announcementsInterval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [employee?.id]);
 
   const handleToggleShift = async () => {
@@ -70,9 +87,15 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
     }
   };
 
-  const unreadMessages = messages.filter(message =>
-    message.toId === employee?.id && !message.read
-  ).length;
+  const unreadIncoming = messages.filter(message =>
+    !!employee && String(message.toId) === String(employee.id) && !message.read
+  );
+  const unreadMessages = unreadIncoming.length;
+  // От кого пришли новые сообщения: «руководитель», «кладовщик»
+  const unreadSenders = [
+    unreadIncoming.some(message => String(message.fromId) === 'MGR') && 'руководитель',
+    unreadIncoming.some(message => String(message.fromId) === 'STORE') && 'кладовщик',
+  ].filter(Boolean).join(', ');
   
   // Функция для проверки активности объявления (поддержка разных форматов)
   const isAnnouncementActive = (announcement: any) => {
@@ -102,6 +125,9 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
           Выйти
         </button>
       </div>
+
+      {/* Новогодняя гирлянда сразу под шапкой — включает руководитель в «Декорирование приложения» */}
+      {garland && <NewYearGarland className="-mt-3 -mb-3" />}
 
       {/* Announcements from Manager */}
       <div className="m-5 announcement-border">
@@ -169,7 +195,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
             <p className="text-base font-bold text-slate-800">Сообщения</p>
             <p className="text-sm text-slate-500 mt-1">
               {unreadMessages > 0
-                ? `${unreadMessages} непрочитанных`
+                ? `${unreadMessages} непрочитанных${unreadSenders ? ` (${unreadSenders})` : ''}`
                 : 'Нет новых сообщений'}
             </p>
           </div>
@@ -198,7 +224,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
           onClick={() => onNavigate('Profile')}
         >
           <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mr-4 text-2xl">
-            👤
+            👨‍⚕️
           </div>
           <div className="text-left flex-1">
             <p className="text-base font-bold text-slate-800">Профиль</p>

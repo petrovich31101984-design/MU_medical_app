@@ -1,1 +1,29 @@
 @import "tailwindcss";
+
+/* Новогодняя хвойная гирлянда под объявлением на главном экране (включает руководитель).
+   Фрагменты идут подряд, лишнее обрезается по ширине; нажатия проходят сквозь гирлянду */
+.new-year-garland {
+  position: relative;
+  height: 52px;
+  overflow: hidden;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+/* Золотые блики: вспыхивают, поворачиваясь, и гаснут — каждый со своей задержкой */
+.garland-glint {
+  fill: #fde047;
+  filter: drop-shadow(0 0 2px #facc15);
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation: garland-glint 3s ease-in-out infinite;
+}
+@keyframes garland-glint {
+  0%, 100% { opacity: 0; transform: scale(0.2) rotate(0deg); }
+  15% { opacity: 1; transform: scale(1.2) rotate(45deg); }
+  30% { opacity: 0; transform: scale(0.2) rotate(90deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .garland-glint { animation: none; opacity: 0.9; }
+}

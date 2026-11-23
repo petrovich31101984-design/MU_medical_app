@@ -12,7 +12,23 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
   const { employee } = useAuthStore();
   const { messages, loadMessages, sendMessage, markMessagesAsRead, editMessage, deleteMessage } = useDataStore();
   const [newMessage, setNewMessage] = useState('');
-  const [selectedRecipient, setSelectedRecipient] = useState<'MGR' | 'STORE'>('MGR');
+  // Непрочитанные входящие от руководителя / кладовщика
+  const isUnreadFrom = (message: ChatMessage, from: 'MGR' | 'STORE') =>
+    !!employee &&
+    String(message.toId) === String(employee.id) &&
+    String(message.fromId) === from &&
+    !message.read;
+  // Вкладка с новыми сообщениями; если новые есть у обоих — та, где сообщение пришло позже
+  const pickTab = (list: ChatMessage[]): 'MGR' | 'STORE' => {
+    const latestUnread = (from: 'MGR' | 'STORE') =>
+      Math.max(0, ...list.filter(m => isUnreadFrom(m, from)).map(m => new Date(m.date).getTime() || 1));
+    return latestUnread('STORE') > latestUnread('MGR') ? 'STORE' : 'MGR';
+  };
+  // Вкладку выбираем сразу при открытии (сообщения уже в памяти после главного экрана).
+  // Пока вкладка не выбрана, ничего не отмечаем прочитанным — иначе сообщения
+  // другой вкладки помечались прочитанными, хотя их не видели.
+  const [selectedRecipient, setSelectedRecipient] = useState<'MGR' | 'STORE'>(() => pickTab(messages));
+  const [tabChosen, setTabChosen] = useState(() => messages.length > 0);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
   const [contextMenuMessageId, setContextMenuMessageId] = useState<string | null>(null);
@@ -37,19 +53,26 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
     }
   }, [employee]);
 
+  const unreadCount = (from: 'MGR' | 'STORE') =>
+    messages.filter(message => isUnreadFrom(message, from)).length;
+
+  // Если при открытии сообщений ещё не было — выбрать вкладку, когда они загрузятся
   useEffect(() => {
-    if (!employee) return;
+    if (tabChosen || !employee || messages.length === 0) return;
+    setSelectedRecipient(pickTab(messages));
+    setTabChosen(true);
+  }, [tabChosen, employee?.id, messages]);
+
+  // Отмечаем прочитанными только сообщения открытой вкладки и только после выбора вкладки
+  useEffect(() => {
+    if (!employee || !tabChosen) return;
 
     const unreadIds = messages
-      .filter(message =>
-        message.toId === employee.id &&
-        message.fromId === selectedRecipient &&
-        !message.read
-      )
+      .filter(message => isUnreadFrom(message, selectedRecipient))
       .map(message => message.id);
 
     if (unreadIds.length > 0) void markMessagesAsRead(unreadIds);
-  }, [employee?.id, selectedRecipient, messages, markMessagesAsRead]);
+  }, [employee?.id, tabChosen, selectedRecipient, messages, markMessagesAsRead]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -137,8 +160,8 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
     }
   };
 
-  const filteredMessages = messages.filter(msg => 
-    msg.toId === selectedRecipient || msg.fromId === selectedRecipient
+  const filteredMessages = messages.filter(msg =>
+    String(msg.toId) === selectedRecipient || String(msg.fromId) === selectedRecipient
   );
 
   const sortedMessages = [...filteredMessages].sort((a, b) => 
@@ -174,10 +197,18 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
                   ? 'bg-blue-600 border-blue-600 text-white'
                   : 'border-slate-200 text-slate-700 hover:bg-slate-50'
               }`}
-              onClick={() => setSelectedRecipient(key as 'MGR' | 'STORE')}
+              onClick={() => {
+                setTabChosen(true);
+                setSelectedRecipient(key as 'MGR' | 'STORE');
+              }}
             >
               <span className="mr-1">{recipient.icon}</span>
               {recipient.name}
+              {selectedRecipient !== key && unreadCount(key as 'MGR' | 'STORE') > 0 && (
+                <span className="ml-2 inline-flex items-center justify-center bg-red-600 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1.5">
+                  {unreadCount(key as 'MGR' | 'STORE')}
+                </span>
+              )}
             </button>
           ))}
         </div>

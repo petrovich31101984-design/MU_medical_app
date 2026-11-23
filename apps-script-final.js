@@ -1,9 +1,12 @@
 /**
  * СМУ - Система Медицинского Учёта
  * Google Apps Script Web App для руководителя + сотрудника
- * Версия 0.5.5
+ * Версия 0.5.7
  *  - getEmployees отдаёт список без паролей; getEmployeeWorkState — смена одного сотрудника
  *  - запись в таблицу (doPost) выполняется по одной, через блокировку
+ *  - updateReturn: руководитель подтверждает, корректирует или отклоняет возврат
+ *  - повторная отправка из офлайн-очереди телефона не создаёт дублей листов расхода, возвратов и сообщений
+ *  - правка/удаление уже удалённого сообщения не считается ошибкой (очередь телефона не застревает)
  */
 
 // ==================== ГЛАВНЫЕ ФУНКЦИИ ====================
@@ -150,21 +153,27 @@ function handlePost(e) {
       case 'addReturn':
         addReturnData(data);
         return jsonResponse({ success: true });
+      case 'updateReturn':
+        // Подтверждение / корректировка / отклонение возврата руководителем
+        updateRow('Возвраты', data.id, data.data);
+        return jsonResponse({ success: true });
 
       // Чат
       case 'addChatMessage':
         addChatMessageData(data);
         return jsonResponse({ success: true });
+      // Сообщение могли уже удалить (или это повтор из офлайн-очереди телефона) —
+      // «не найдено» не ошибка, иначе очередь на телефоне застрянет на этой записи
       case 'updateChatMessage': {
         const { id, ...updates } = data;
-        updateChatMessageData(id, updates);
+        ignoreNotFound(() => updateChatMessageData(id, updates));
         return jsonResponse({ success: true });
       }
       case 'editChatMessage':
-        updateChatMessageData(data.id, { 'Текст': data.text });
+        ignoreNotFound(() => updateChatMessageData(data.id, { 'Текст': data.text }));
         return jsonResponse({ success: true });
       case 'deleteChatMessage':
-        deleteChatMessageData(data.id);
+        ignoreNotFound(() => deleteChatMessageData(data.id));
         return jsonResponse({ success: true });
 
       // Объявления
@@ -195,6 +204,15 @@ function handlePost(e) {
 }
 
 // ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
+
+// Выполнить действие; ошибку «Запись с ID … не найдена» пропустить
+function ignoreNotFound(action) {
+  try {
+    action();
+  } catch (error) {
+    if (String(error).indexOf('не найдена') === -1) throw error;
+  }
+}
 
 function jsonResponse(data) {
   return ContentService
@@ -233,12 +251,22 @@ function readSheetData(sheetName) {
   });
 }
 
+// Листы, куда пишет офлайн-очередь телефона сотрудника. При слабой связи запись могла дойти
+// до таблицы, а ответ — потеряться; телефон отправит её ещё раз с тем же ID. Вторую копию не добавляем.
+const DEDUP_SHEETS = ['Листы расхода', 'Возвраты', 'Чат'];
+
 function appendRow(sheetName, rowData) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(sheetName);
   if (!sheet) throw new Error('Лист не найден: ' + sheetName);
 
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const newId = String(rowData['ID'] ?? '').trim();
+  const idColumn = headers.indexOf('ID');
+  if (newId && idColumn !== -1 && DEDUP_SHEETS.indexOf(sheetName) !== -1 && sheet.getLastRow() > 1) {
+    const ids = sheet.getRange(2, idColumn + 1, sheet.getLastRow() - 1, 1).getValues();
+    if (ids.some(r => String(r[0]).trim() === newId)) return; // уже записано — это повтор
+  }
   const row = headers.map(h => rowData[h] !== undefined ? rowData[h] : '');
   const targetRow = sheet.getLastRow() + 1;
   row.forEach((value, colIndex) => {

@@ -33,6 +33,9 @@ const readQueue = (): QueueItem[] => {
   }
 };
 
+/** Записи, ещё не отправленные на сервер (в порядке создания) */
+export const getQueuedItems = (): { action: string; data: any }[] => readQueue();
+
 const writeQueue = (queue: QueueItem[]) => {
   localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
 };

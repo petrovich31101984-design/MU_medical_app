@@ -16,6 +16,7 @@ import ReturnScreen from './screens/ReturnScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import { logoutButtonClass } from './components/ScreenHeader';
 import InitialStockScreen from './screens/InitialStockScreen';
+import SmuLoader from './components/SmuLoader';
 
 type Screen = 'Setup' | 'Login' | 'Home' | 'ExpenseSheet' | 'Messages' | 'Announcements' | 'Profile' | 'Return' | 'Settings' | 'InitialStock';
 type InitialStockStatus = 'checking' | 'required' | 'completed' | 'error';
@@ -132,49 +133,7 @@ export default function App() {
 
   // Если конфигурация ещё не загружена, показываем загрузку
   if (isConfigured === null || (isConfigured === true && isAuthenticated && initialStockStatus === 'checking')) {
-    return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="flex flex-col items-center">
-          <div className="relative w-32 h-32 mb-4">
-            {/* Логотип в центре с мерцанием */}
-            <img
-              src={`${import.meta.env.BASE_URL}logo.png`}
-              alt="АлкоСпас"
-              className="w-24 h-24 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-2xl animate-pulse"
-            />
-            
-            {/* SVG с двумя дугами */}
-            <svg className="absolute inset-0 w-full h-full animate-spin" style={{ animationDuration: '2s' }} viewBox="0 0 128 128">
-              {/* Синяя дуга - 150° */}
-              <circle
-                cx="64"
-                cy="64"
-                r="56"
-                fill="none"
-                stroke="#2563eb"
-                strokeWidth="4"
-                strokeDasharray="146.6 205.3"
-                strokeDashoffset="0"
-                strokeLinecap="round"
-              />
-              {/* Красная дуга - 150° (разрыв 30°) */}
-              <circle
-                cx="64"
-                cy="64"
-                r="56"
-                fill="none"
-                stroke="#dc2626"
-                strokeWidth="4"
-                strokeDasharray="146.6 205.3"
-                strokeDashoffset="-175.9"
-                strokeLinecap="round"
-              />
-            </svg>
-          </div>
-          <p className="text-slate-500">Загрузка...</p>
-        </div>
-      </div>
-    );
+    return <SmuLoader />;
   }
 
   // Если не настроен URL, показываем экран настройки

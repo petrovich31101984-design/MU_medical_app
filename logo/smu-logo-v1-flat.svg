@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>СМУ — плоский</title>
+  <!-- Вариант 1: плоский, чистые цвета без градиентов -->
+  <circle cx="256" cy="256" r="200" fill="#FFFFFF"/>
+  <circle cx="256" cy="256" r="194" fill="none" stroke="#1E9E58" stroke-width="3"/>
+
+  <!-- Кольцо + тонкий внешний обод -->
+  <circle cx="256" cy="256" r="226" fill="none" stroke="#1E9E58" stroke-width="44"/>
+  <circle cx="256" cy="256" r="252" fill="none" stroke="#1E9E58" stroke-width="4"/>
+  <circle cx="256" cy="256" r="249" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+
+  <!-- Крест -->
+  <path d="M204 76 H308 A16 16 0 0 1 324 92 V188 H420 A16 16 0 0 1 436 204 V308 A16 16 0 0 1 420 324 H324 V420 A16 16 0 0 1 308 436 H204 A16 16 0 0 1 188 420 V324 H92 A16 16 0 0 1 76 308 V204 A16 16 0 0 1 92 188 H188 V92 A16 16 0 0 1 204 76 Z"
+        fill="#E53935"/>
+
+  <!-- СМУ -->
+  <text x="256" y="256" dy="0.35em" text-anchor="middle"
+        font-family="'Arial Black', 'Segoe UI Black', Arial, sans-serif" font-weight="900" font-size="132"
+        fill="#1565C0" stroke="#FFFFFF" stroke-width="12" stroke-linejoin="round" paint-order="stroke">СМУ</text>
+
+  <!-- Надписи по кольцу -->
+  <path id="arcTop" d="M 125.8 441.9 A 227 227 0 1 1 386.2 441.9" fill="none"/>
+  <path id="arcBottom" d="M 29 256 A 227 227 0 0 0 483 256" fill="none"/>
+  <g font-family="'Arial Black', 'Segoe UI Black', Arial, sans-serif" font-weight="900" fill="#FFFFFF" dominant-baseline="central">
+    <text font-size="30"><textPath href="#arcTop" startOffset="50%" text-anchor="middle" textLength="1100" lengthAdjust="spacing">СИСТЕМА МЕДИЦИНСКОГО УЧЁТА</textPath></text>
+    <text font-size="24"><textPath href="#arcBottom" startOffset="50%" text-anchor="middle">• 0.5.5 •</textPath></text>
+  </g>
+</svg>

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Nomenclature, ExpenseSheet, ChatMessage, Announcement } from '../types';
 import { api } from '../api';
+import { getQueuedItems } from './syncStore';
 
 const readCache = <T>(key: string): T[] => {
   try {
@@ -14,6 +15,29 @@ const readCache = <T>(key: string): T[] => {
 
 const writeCache = (key: string, data: unknown[]) => {
   localStorage.setItem(`cache_${key}`, JSON.stringify(data));
+};
+
+// Декорирование: руководитель включает гирлянду в своём приложении, настройка хранится служебной
+// записью на листе «Объявления» (ID DECOR_RECORD_ID, «Текст» — JSON {"garland":true,...}, «Активно» = НЕТ).
+// Сотруднику показываем только гирлянду (снег — лишь у руководителя и кладовщика).
+const DECOR_RECORD_ID = 'smu-decor';
+const isDecorRecord = (ann: any) => String(ann?.id ?? ann?.['ID'] ?? '').trim() === DECOR_RECORD_ID;
+// Если служебных записей несколько (могли появиться дубли) — действует самая свежая по «Дате»
+const recordTime = (ann: any) => {
+  const t = new Date(ann?.date ?? ann?.['Дата'] ?? '').getTime();
+  return Number.isNaN(t) ? 0 : t;
+};
+const readDecorGarland = (records: any[]): boolean => {
+  const record = records.filter(isDecorRecord).sort((a, b) => recordTime(b) - recordTime(a))[0];
+  try {
+    return JSON.parse(record?.text ?? record?.['Текст'] ?? '{}').garland === true;
+  } catch {
+    return false;
+  }
+};
+const DECOR_CACHE_KEY = 'cache_decor_garland';
+const readCachedGarland = () => {
+  try { return localStorage.getItem(DECOR_CACHE_KEY) === '1'; } catch { return false; }
 };
 
 // Кэш сообщений — отдельно для каждого сотрудника: на общем телефоне
@@ -41,13 +65,52 @@ const queuedMessageIds = (): Set<string> => {
   }
 };
 
+// Листы расхода из офлайн-очереди, которые ещё не дошли до таблицы.
+// Без этого обновление списка с сервера «теряло» их с экрана (и из кэша) до отправки,
+// а неотправленная правка затиралась старой версией листа с сервера.
+const withQueuedSheets = (serverSheets: ExpenseSheet[], employeeId: string): ExpenseSheet[] => {
+  let sheets = [...serverSheets];
+  for (const item of getQueuedItems()) {
+    const data = item.data;
+    if (!data) continue;
+    if (item.action === 'addExpenseSheet' && String(data.employeeId) === String(employeeId)) {
+      if (!sheets.some(s => String(s.id) === String(data.id))) sheets.push(data as ExpenseSheet);
+    } else if (item.action === 'updateExpenseSheet' && data.id && data.data) {
+      const u = data.data;
+      sheets = sheets.map(s => String(s.id) !== String(data.id) ? s : {
+        ...s,
+        patientName: u['Пациент'] ?? s.patientName,
+        patientBirthDate: u['Дата рождения пациента'] ?? s.patientBirthDate,
+        date: u['Дата'] ?? s.date,
+        month: u['Месяц'] ?? s.month,
+        callCategory: u['Категория выезда'] ?? s.callCategory,
+        therapyName: u['Название терапии'] ?? s.therapyName,
+        therapyCost: u['Стоимость терапии'] ?? s.therapyCost,
+        totalAmount: u['Итого по препаратам'] ?? s.totalAmount,
+        items: Array.isArray(u.items) ? u.items : s.items,
+      });
+    }
+  }
+  return sheets;
+};
+
+/** ID листов расхода, которые созданы или изменены на телефоне и ещё не отправлены */
+export const getUnsentSheetIds = (): Set<string> => new Set(
+  getQueuedItems()
+    .filter(item => item.action === 'addExpenseSheet' || item.action === 'updateExpenseSheet')
+    .map(item => String(item.data?.id ?? ''))
+    .filter(Boolean)
+);
+
 interface DataStore {
   nomenclature: Nomenclature[];
   expenseSheets: ExpenseSheet[];
   messages: ChatMessage[];
   announcements: Announcement[];
+  /** Новогодняя гирлянда под объявлением — включает руководитель */
+  garland: boolean;
   loading: boolean;
-  
+
   loadNomenclature: () => Promise<void>;
   loadExpenseSheets: (employeeId: string) => Promise<void>;
   loadMessages: (employeeId: string) => Promise<void>;
@@ -73,6 +136,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
   expenseSheets: [],
   messages: [],
   announcements: [],
+  garland: readCachedGarland(),
   loading: false,
 
   loadNomenclature: async () => {
@@ -89,11 +153,12 @@ export const useDataStore = create<DataStore>((set, get) => ({
   loadExpenseSheets: async (employeeId: string) => {
     set({ loading: true });
     const response = await api.getEmployeeExpenseSheets(employeeId);
-    if (response.success && response.data) {
-      writeCache(`expenseSheets_${employeeId}`, response.data);
-      set({ expenseSheets: response.data, loading: false });
+    if (response.success && Array.isArray(response.data)) {
+      const expenseSheets = withQueuedSheets(response.data, employeeId);
+      writeCache(`expenseSheets_${employeeId}`, expenseSheets);
+      set({ expenseSheets, loading: false });
     } else {
-      set({ expenseSheets: readCache<ExpenseSheet>(`expenseSheets_${employeeId}`), loading: false });
+      set({ expenseSheets: withQueuedSheets(readCache<ExpenseSheet>(`expenseSheets_${employeeId}`), employeeId), loading: false });
     }
   },
 
@@ -133,7 +198,11 @@ export const useDataStore = create<DataStore>((set, get) => ({
     set({ loading: true });
     const response = await api.getAnnouncements();
     if (response.success && response.data) {
-      const normalizedAnnouncements = response.data.map((ann: any) => {
+      // Служебная запись декора — не объявление: читаем из неё гирлянду и убираем из списка
+      const garland = readDecorGarland(response.data);
+      try { localStorage.setItem(DECOR_CACHE_KEY, garland ? '1' : '0'); } catch { /* хранилище недоступно */ }
+      set({ garland });
+      const normalizedAnnouncements = response.data.filter((ann: any) => !isDecorRecord(ann)).map((ann: any) => {
         const isActive = ann.active === true ||
                         ann.active === 'ДА' ||
                         ann['Активно'] === 'ДА' ||
@@ -153,7 +222,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
       writeCache('announcements', normalizedAnnouncements);
       set({ announcements: normalizedAnnouncements, loading: false });
     } else {
-      set({ announcements: readCache<Announcement>('announcements'), loading: false });
+      set({ announcements: readCache<Announcement>('announcements').filter(ann => !isDecorRecord(ann)), loading: false });
     }
   },
 
