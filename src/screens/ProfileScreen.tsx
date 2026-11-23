@@ -53,7 +53,7 @@ export default function ProfileScreen({ onBack, onEditExpenseSheet }: ProfileScr
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <ScreenHeader icon="🧑‍💼" title="Профиль" onBack={onBack} />
+      <ScreenHeader icon="👨‍⚕️" title="Профиль" onBack={onBack} />
 
       <div className="bg-white p-6 flex flex-col items-center border-b border-slate-200">
         <div className="w-20 h-20 rounded-full bg-blue-600 flex items-center justify-center mb-4">

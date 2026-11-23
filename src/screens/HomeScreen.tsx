@@ -217,7 +217,7 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
           onClick={() => onNavigate('Profile')}
         >
           <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mr-4 text-2xl">
-            🧑‍💼
+            👨‍⚕️
           </div>
           <div className="text-left flex-1">
             <p className="text-base font-bold text-slate-800">Профиль</p>
