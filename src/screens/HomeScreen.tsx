@@ -40,7 +40,14 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
     }, 5000);
     // Объявления (и включённая руководителем гирлянда) — раз в 30 с, без перезахода в приложение
     const announcementsInterval = setInterval(() => { void loadAnnouncements(); }, 30000);
-    return () => { clearInterval(interval); clearInterval(announcementsInterval); };
+    // Свёрнутое приложение таймеры «усыпляет» — при возврате на экран обновляем объявления сразу
+    const onVisible = () => { if (!document.hidden) void loadAnnouncements(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(interval);
+      clearInterval(announcementsInterval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, [employee?.id]);
 
   const handleToggleShift = async () => {

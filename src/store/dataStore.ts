@@ -21,8 +21,13 @@ const writeCache = (key: string, data: unknown[]) => {
 // Сотруднику показываем только гирлянду (снег — лишь у руководителя и кладовщика).
 const DECOR_RECORD_ID = 'smu-decor';
 const isDecorRecord = (ann: any) => String(ann?.id ?? ann?.['ID'] ?? '').trim() === DECOR_RECORD_ID;
+// Если служебных записей несколько (могли появиться дубли) — действует самая свежая по «Дате»
+const recordTime = (ann: any) => {
+  const t = new Date(ann?.date ?? ann?.['Дата'] ?? '').getTime();
+  return Number.isNaN(t) ? 0 : t;
+};
 const readDecorGarland = (records: any[]): boolean => {
-  const record = records.find(isDecorRecord);
+  const record = records.filter(isDecorRecord).sort((a, b) => recordTime(b) - recordTime(a))[0];
   try {
     return JSON.parse(record?.text ?? record?.['Текст'] ?? '{}').garland === true;
   } catch {
