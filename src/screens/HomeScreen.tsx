@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
 import { useDataStore } from '../store/dataStore';
 import { api } from '../api';
+import { getQueuedItems } from '../store/syncStore';
 import NetworkStatus from '../components/NetworkStatus';
 import NewYearGarland from '../components/NewYearGarland';
 import { logoutButtonClass } from '../components/ScreenHeader';
@@ -28,8 +29,14 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
         return;
       }
 
-      setShiftStatus(response.data.shiftOpen);
-      updateShift(response.data.shiftOpen, response.data.status);
+      // Смену открыли/закрыли без связи, а запись ещё в очереди — сервер пока знает старое
+      // состояние. Верим телефону, иначе смена «закрывалась» бы и лист расхода был недоступен.
+      const queuedShift = getQueuedItems()
+        .filter(item => item.action === 'updateEmployeeShift' && String(item.data?.id) === String(employee.id))
+        .pop();
+      const shiftOpen = queuedShift ? queuedShift.data.shiftOpen === true : response.data.shiftOpen;
+      setShiftStatus(shiftOpen);
+      updateShift(shiftOpen, queuedShift ? undefined : response.data.status);
     };
 
     setShiftStatus(employee.shiftOpen === true);

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
-import { useDataStore } from '../store/dataStore';
+import { useDataStore, getUnsentSheetIds } from '../store/dataStore';
+import { useSyncStore } from '../store/syncStore';
 import { ExpenseSheet } from '../types';
 import ScreenHeader from '../components/ScreenHeader';
 
@@ -23,6 +24,9 @@ export default function ProfileScreen({ onBack, onEditExpenseSheet }: ProfileScr
   const { expenseSheets, loadExpenseSheets } = useDataStore();
   const [showRecentSheets, setShowRecentSheets] = useState(false);
   const [viewingSheet, setViewingSheet] = useState<ExpenseSheet | null>(null);
+  // Подписка на размер очереди: когда лист уйдёт на сервер, метка «Не отправлен» сразу исчезнет
+  const pendingCount = useSyncStore(state => state.pendingCount);
+  const unsentIds = pendingCount > 0 ? getUnsentSheetIds() : new Set<string>();
 
   useEffect(() => {
     if (employee) void loadExpenseSheets(employee.id);
@@ -241,6 +245,9 @@ export default function ProfileScreen({ onBack, onEditExpenseSheet }: ProfileScr
                         <span className="min-w-0">
                           <span className="block font-bold text-slate-800">{formatPatientName(sheet.patientName)}</span>
                           <span className="block text-sm text-slate-500 mt-1">{formatDateTime(sheet.date)}</span>
+                          {unsentIds.has(String(sheet.id)) && (
+                            <span className="block text-xs font-semibold text-amber-600 mt-1">⏳ Не отправлен — уйдёт при появлении связи</span>
+                          )}
                         </span>
                         <span className={`text-xs font-bold px-2.5 py-1 rounded-full whitespace-nowrap ${
                           editable ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'

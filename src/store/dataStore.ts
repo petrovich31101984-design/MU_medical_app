@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Nomenclature, ExpenseSheet, ChatMessage, Announcement } from '../types';
 import { api } from '../api';
+import { getQueuedItems } from './syncStore';
 
 const readCache = <T>(key: string): T[] => {
   try {
@@ -64,6 +65,43 @@ const queuedMessageIds = (): Set<string> => {
   }
 };
 
+// Листы расхода из офлайн-очереди, которые ещё не дошли до таблицы.
+// Без этого обновление списка с сервера «теряло» их с экрана (и из кэша) до отправки,
+// а неотправленная правка затиралась старой версией листа с сервера.
+const withQueuedSheets = (serverSheets: ExpenseSheet[], employeeId: string): ExpenseSheet[] => {
+  let sheets = [...serverSheets];
+  for (const item of getQueuedItems()) {
+    const data = item.data;
+    if (!data) continue;
+    if (item.action === 'addExpenseSheet' && String(data.employeeId) === String(employeeId)) {
+      if (!sheets.some(s => String(s.id) === String(data.id))) sheets.push(data as ExpenseSheet);
+    } else if (item.action === 'updateExpenseSheet' && data.id && data.data) {
+      const u = data.data;
+      sheets = sheets.map(s => String(s.id) !== String(data.id) ? s : {
+        ...s,
+        patientName: u['Пациент'] ?? s.patientName,
+        patientBirthDate: u['Дата рождения пациента'] ?? s.patientBirthDate,
+        date: u['Дата'] ?? s.date,
+        month: u['Месяц'] ?? s.month,
+        callCategory: u['Категория выезда'] ?? s.callCategory,
+        therapyName: u['Название терапии'] ?? s.therapyName,
+        therapyCost: u['Стоимость терапии'] ?? s.therapyCost,
+        totalAmount: u['Итого по препаратам'] ?? s.totalAmount,
+        items: Array.isArray(u.items) ? u.items : s.items,
+      });
+    }
+  }
+  return sheets;
+};
+
+/** ID листов расхода, которые созданы или изменены на телефоне и ещё не отправлены */
+export const getUnsentSheetIds = (): Set<string> => new Set(
+  getQueuedItems()
+    .filter(item => item.action === 'addExpenseSheet' || item.action === 'updateExpenseSheet')
+    .map(item => String(item.data?.id ?? ''))
+    .filter(Boolean)
+);
+
 interface DataStore {
   nomenclature: Nomenclature[];
   expenseSheets: ExpenseSheet[];
@@ -115,11 +153,12 @@ export const useDataStore = create<DataStore>((set, get) => ({
   loadExpenseSheets: async (employeeId: string) => {
     set({ loading: true });
     const response = await api.getEmployeeExpenseSheets(employeeId);
-    if (response.success && response.data) {
-      writeCache(`expenseSheets_${employeeId}`, response.data);
-      set({ expenseSheets: response.data, loading: false });
+    if (response.success && Array.isArray(response.data)) {
+      const expenseSheets = withQueuedSheets(response.data, employeeId);
+      writeCache(`expenseSheets_${employeeId}`, expenseSheets);
+      set({ expenseSheets, loading: false });
     } else {
-      set({ expenseSheets: readCache<ExpenseSheet>(`expenseSheets_${employeeId}`), loading: false });
+      set({ expenseSheets: withQueuedSheets(readCache<ExpenseSheet>(`expenseSheets_${employeeId}`), employeeId), loading: false });
     }
   },
 
