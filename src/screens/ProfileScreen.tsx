@@ -62,8 +62,6 @@ export default function ProfileScreen({ onBack, onEditExpenseSheet }: ProfileScr
       day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
     });
   };
-  const formatMoney = (value: number) =>
-    `${(Number(value) || 0).toLocaleString('ru-RU', { maximumFractionDigits: 2 })} ₽`;
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -211,11 +209,6 @@ export default function ProfileScreen({ onBack, onEditExpenseSheet }: ProfileScr
                         ))}
                       </div>
                     )}
-                  </div>
-
-                  <div className="flex justify-between text-base font-bold text-slate-800 pt-1">
-                    <span>Итого</span>
-                    <span>{formatMoney(viewingSheet.totalAmount)}</span>
                   </div>
 
                   {isEditable(viewingSheet) ? (
