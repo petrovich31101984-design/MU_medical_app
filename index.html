@@ -100,6 +100,8 @@
         transition: opacity .45s ease, visibility .45s ease;
       }
       .smu-splash.smu-hide { opacity: 0; visibility: hidden; }
+      /* пока виден экран загрузки, страница под ним не прокручивается — иначе справа видна её полоса прокрутки */
+      html:has(.smu-splash:not(.smu-hide)) { overflow: hidden; }
       .smu-splash svg { width: min(42vw, 180px); height: auto; overflow: visible; }
 
       /* рамка прорисовывается контуром — после того, как упали все кубики */
