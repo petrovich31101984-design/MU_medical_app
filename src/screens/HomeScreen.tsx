@@ -3,7 +3,7 @@ import { useAuthStore } from '../store/authStore';
 import { useDataStore } from '../store/dataStore';
 import { api } from '../api';
 import NetworkStatus from '../components/NetworkStatus';
-import NewYearGarland from '../components/NewYearGarland';
+import { GarlandFrame } from '../components/NewYearGarland';
 import { logoutButtonClass } from '../components/ScreenHeader';
 
 interface HomeScreenProps {
@@ -112,8 +112,10 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
         </button>
       </div>
 
-      {/* Announcements from Manager */}
-      <div className="m-5 announcement-border">
+      {/* Announcements from Manager — с гирляндой вокруг, если её включил руководитель */}
+      {(() => {
+        const block = (
+      <div className="announcement-border">
         <div className="relative bg-yellow-50 p-4 rounded-[10px]">
           {announcements.filter(isAnnouncementActive).length > 0 ? (
             <div className="space-y-3">
@@ -148,9 +150,10 @@ export default function HomeScreen({ onNavigate }: HomeScreenProps) {
           )}
         </div>
       </div>
-
-      {/* Новогодняя гирлянда под объявлением — включает руководитель в «Декорирование приложения» */}
-      {garland && <NewYearGarland className="-mt-2 -mb-3" />}
+        );
+        // Отступ рамки (22 px) ≈ прежнему m-5, поэтому с гирляндой и без неё объявление стоит на месте
+        return garland ? <GarlandFrame>{block}</GarlandFrame> : <div className="m-5">{block}</div>;
+      })()}
 
       {/* Menu */}
       <div className="p-5 space-y-3">
