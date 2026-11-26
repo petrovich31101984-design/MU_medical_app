@@ -1,7 +1,7 @@
 /**
  * СМУ - Система Медицинского Учёта
  * Google Apps Script Web App для руководителя + сотрудника
- * Версия 0.5.10
+ * Версия 0.5.11
  *  - getEmployees отдаёт список без паролей; getEmployeeWorkState — смена одного сотрудника
  *  - запись в таблицу (doPost) выполняется по одной, через блокировку
  *  - updateReturn: руководитель подтверждает, корректирует или отклоняет возврат
@@ -10,6 +10,7 @@
  *  - лист «Прайс услуг»: стоимость услуг по категориям выезда (getServicePrices, setupServicePrices)
  *  - стоимость терапии в листе расхода сотрудника считается по «Прайсу услуг»; сотруднику она не отдаётся
  *  - в прайсе: «Неоплаченная неустойка» и «Неоплаченный медотвод»
+ *  - управление прайсом из приложения руководителя: addServicePrice, updateServicePrice, deleteServicePrice
  */
 
 // ==================== ГЛАВНЫЕ ФУНКЦИИ ====================
@@ -109,6 +110,17 @@ function handlePost(e) {
         return jsonResponse({ success: true });
       case 'deleteNomenclature':
         deleteNomenclatureData(data.id);
+        return jsonResponse({ success: true });
+
+      // Прайс услуг
+      case 'addServicePrice':
+        addServicePriceData(data);
+        return jsonResponse({ success: true });
+      case 'updateServicePrice':
+        updateServicePriceData(data.id, data.data);
+        return jsonResponse({ success: true });
+      case 'deleteServicePrice':
+        deleteRow(SERVICE_PRICES_SHEET, data.id);
         return jsonResponse({ success: true });
 
       // Начальные остатки
@@ -551,6 +563,32 @@ function setupServicePrices() {
   sheet.autoResizeColumns(1, SERVICE_PRICES_HEADERS.length);
   Logger.log('Лист «' + SERVICE_PRICES_SHEET + '»: добавлено услуг — ' + newRows.length);
   return newRows.length;
+}
+
+// Изменения прайса из приложения руководителя
+function addServicePriceData(data) {
+  // Листа ещё нет — создаём его вместе с услугами по умолчанию
+  if (!SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SERVICE_PRICES_SHEET)) setupServicePrices();
+  appendRow(SERVICE_PRICES_SHEET, {
+    'ID': data['ID'] || data.id || 'SRV-' + Date.now(),
+    'Категория выезда': data['Категория выезда'] ?? data.category ?? '',
+    'Название услуги': data['Название услуги'] ?? data.name ?? '',
+    'Стоимость (₽)': data['Стоимость (₽)'] ?? data.price ?? '',
+    'Актуальна': data['Актуальна'] ?? (data.active === false ? 'НЕТ' : 'ДА'),
+    'Дата изменения': new Date(),
+    'Примечание': data['Примечание'] ?? data.note ?? ''
+  });
+}
+
+function updateServicePriceData(id, updates) {
+  const row = {};
+  if (updates.category !== undefined) row['Категория выезда'] = updates.category;
+  if (updates.name !== undefined) row['Название услуги'] = updates.name;
+  if (updates.price !== undefined) row['Стоимость (₽)'] = updates.price;
+  if (updates.active !== undefined) row['Актуальна'] = updates.active === false ? 'НЕТ' : 'ДА';
+  if (updates.note !== undefined) row['Примечание'] = updates.note;
+  row['Дата изменения'] = new Date();
+  updateRow(SERVICE_PRICES_SHEET, id, row);
 }
 
 // Категория выезда в листе расхода → категория в прайсе
