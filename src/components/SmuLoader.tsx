@@ -15,7 +15,7 @@ export default function SmuLoader() {
         </g>
       </svg>
       <p className="smu-title"><span>С</span><span>М</span><span>У</span></p>
-      <p className="smu-sub">Выездная медицинская помощь <span className="smu-ver">(v.0.5.5)</span></p>
+      <p className="smu-sub">Система медицинского учёта <span className="smu-ver">(v.0.5.5)</span></p>
     </div>
   );
 }
