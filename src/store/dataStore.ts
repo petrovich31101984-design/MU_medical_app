@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { Nomenclature, ExpenseSheet, ChatMessage, Announcement } from '../types';
+import { Nomenclature, ExpenseSheet, ChatMessage, Announcement, ServiceOption } from '../types';
+import { defaultServices } from '../data/defaultServices';
 import { api } from '../api';
 import { getQueuedItems } from './syncStore';
 
@@ -85,7 +86,6 @@ const withQueuedSheets = (serverSheets: ExpenseSheet[], employeeId: string): Exp
         month: u['Месяц'] ?? s.month,
         callCategory: u['Категория выезда'] ?? s.callCategory,
         therapyName: u['Название терапии'] ?? s.therapyName,
-        therapyCost: u['Стоимость терапии'] ?? s.therapyCost,
         totalAmount: u['Итого по препаратам'] ?? s.totalAmount,
         items: Array.isArray(u.items) ? u.items : s.items,
       });
@@ -102,8 +102,16 @@ export const getUnsentSheetIds = (): Set<string> => new Set(
     .filter(Boolean)
 );
 
+// Список услуг: последний загруженный из «Прайса услуг» (работает без сети), иначе встроенный
+const readCachedServices = (): ServiceOption[] => {
+  const cached = readCache<ServiceOption>('services');
+  return cached.length > 0 ? cached : defaultServices;
+};
+
 interface DataStore {
   nomenclature: Nomenclature[];
+  /** Услуги для выбора в листе расхода (без цен) */
+  services: ServiceOption[];
   expenseSheets: ExpenseSheet[];
   messages: ChatMessage[];
   announcements: Announcement[];
@@ -112,6 +120,7 @@ interface DataStore {
   loading: boolean;
 
   loadNomenclature: () => Promise<void>;
+  loadServices: () => Promise<void>;
   loadExpenseSheets: (employeeId: string) => Promise<void>;
   loadMessages: (employeeId: string) => Promise<void>;
   loadAnnouncements: () => Promise<void>;
@@ -133,6 +142,7 @@ const writeMessagesCache = (messages: ChatMessage[]) => {
 
 export const useDataStore = create<DataStore>((set, get) => ({
   nomenclature: [],
+  services: readCachedServices(),
   expenseSheets: [],
   messages: [],
   announcements: [],
@@ -147,6 +157,15 @@ export const useDataStore = create<DataStore>((set, get) => ({
       set({ nomenclature: response.data, loading: false });
     } else {
       set({ nomenclature: readCache<Nomenclature>('nomenclature'), loading: false });
+    }
+  },
+
+  loadServices: async () => {
+    const response = await api.getServiceList();
+    // Пустой ответ (лист «Прайс услуг» ещё не создан) не затирает рабочий список
+    if (response.success && response.data && response.data.length > 0) {
+      try { writeCache('services', response.data); } catch { /* хранилище недоступно */ }
+      set({ services: response.data });
     }
   },
 

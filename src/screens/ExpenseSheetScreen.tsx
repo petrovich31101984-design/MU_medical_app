@@ -3,6 +3,7 @@ import { useAuthStore } from '../store/authStore';
 import { useDataStore } from '../store/dataStore';
 import { ExpenseItem, ExpenseSheet, Nomenclature } from '../types';
 import ScreenHeader from '../components/ScreenHeader';
+import { servicePriceCategory } from '../data/defaultServices';
 
 interface ExpenseSheetScreenProps {
   onBack: () => void;
@@ -37,22 +38,46 @@ const pickerGroup = (nom: Nomenclature) => {
   return 3;
 };
 
+// Полная существующая дата «ДД.ММ.ГГГГ», не в будущем и не раньше 1900 года
+const isValidBirthDate = (value: string) => {
+  const match = value.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (!match) return false;
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return false;
+  return year >= 1900 && date.getTime() <= Date.now();
+};
+
 const formatStoredBirthDate = (value: string) => {
   const isoDate = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (isoDate) return `${isoDate[3]}.${isoDate[2]}.${isoDate[1]}`;
   return formatBirthDate(value);
 };
 
+// Категории, для которых сотрудник выбирает услугу. Варианты берутся из «Прайса услуг»
+// (управляет руководитель), стоимость считает таблица.
+const CATEGORIES_WITH_THERAPY = ['Вызов однократно', 'Вызов + повторы', 'Курс', 'Госпитализация', 'Неустойка', 'Мед. отвод'];
+const THERAPY_LABELS: Record<string, { label: string; placeholder: string }> = {
+  'Госпитализация': { label: 'Вид госпитализации', placeholder: 'Выберите вид госпитализации' },
+  'Неустойка': { label: 'Вид неустойки', placeholder: 'Выберите вид неустойки' },
+  'Мед. отвод': { label: 'Вид мед. отвода', placeholder: 'Выберите вид мед. отвода' },
+};
+const therapyLabel = (category: string) =>
+  THERAPY_LABELS[category] || { label: 'Название терапии', placeholder: 'Выберите тип терапии' };
+// Для этих категорий лист расхода можно сохранить без препаратов
+const CATEGORIES_WITHOUT_ITEMS = ['Госпитализация', 'Неустойка', 'Мед. отвод'];
+
 export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreenProps) {
   const { employee } = useAuthStore();
-  const { nomenclature, loading: nomenclatureLoading, loadNomenclature, createExpenseSheet, updateExpenseSheet } = useDataStore();
+  const { nomenclature, services, loading: nomenclatureLoading, loadNomenclature, loadServices, createExpenseSheet, updateExpenseSheet } = useDataStore();
   const isCreationBlocked = !sheet && !(employee?.status === 'Активен' || employee?.shiftOpen === true);
 
   const [patientName, setPatientName] = useState(sheet?.patientName || '');
   const [patientBirthDate, setPatientBirthDate] = useState(formatStoredBirthDate(sheet?.patientBirthDate || ''));
   const [callCategory, setCallCategory] = useState(sheet?.callCategory || '');
   const [therapyNames, setTherapyNames] = useState<string[]>(sheet?.therapyName ? sheet.therapyName.split(', ') : ['']);
-  const [therapyCost, setTherapyCost] = useState(sheet ? String(sheet.therapyCost) : '');
   const [items, setItems] = useState<ExpenseItem[]>(sheet?.items || []);
   const [loading, setLoading] = useState(false);
   const [showNomenclaturePicker, setShowNomenclaturePicker] = useState(false);
@@ -63,7 +88,19 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
 
   useEffect(() => {
     loadNomenclature();
+    loadServices();
   }, []);
+
+  // Услуги выбранной категории из прайса. В старом листе могла остаться услуга, которой в прайсе
+  // уже нет (переименовали или удалили) — показываем её, чтобы выбор не сбрасывался.
+  const priceCategory = servicePriceCategory(callCategory);
+  const categoryServices = services.filter(s => s.category === priceCategory);
+  const therapyOptions = [
+    ...categoryServices.map(s => s.name),
+    ...therapyNames.filter(n => n && !categoryServices.some(s => s.name === n)),
+  ];
+  // Если руководитель убрал из прайса все услуги категории, выбирать нечего — лист сохраняется без выбора
+  const requiresTherapy = CATEGORIES_WITH_THERAPY.includes(callCategory) && therapyOptions.length > 0;
 
   const addItem = (nom: Nomenclature, quantity: number = 1, uniqueKey: string) => {
     const nomData = nom as any;
@@ -112,6 +149,7 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
     }
   };
 
+  const itemsOptional = CATEGORIES_WITHOUT_ITEMS.includes(callCategory);
   const totalAmount = items.reduce((sum, item) => sum + item.total, 0);
 
   const handleSubmit = async () => {
@@ -125,7 +163,28 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
       return;
     }
 
-    if (items.length === 0) {
+    if (!patientBirthDate.trim()) {
+      setError('Введите дату рождения пациента');
+      return;
+    }
+
+    if (!isValidBirthDate(patientBirthDate)) {
+      setError('Проверьте дату рождения: нужна существующая дата в формате ДД.ММ.ГГГГ, не позже сегодняшнего дня');
+      return;
+    }
+
+    // Стоимость терапии берётся из «Прайса услуг» по выбранной терапии, поэтому без неё лист не сохраняем
+    const chosenTherapies = therapyNames.map(n => n.trim()).filter(Boolean);
+    if (requiresTherapy && chosenTherapies.length === 0) {
+      setError(therapyLabel(callCategory).placeholder);
+      return;
+    }
+    // Коды услуг: по ним таблица находит цену, даже если услугу успели переименовать.
+    // Если хоть у одной услуги кода нет (встроенный список) — таблица считает по названиям.
+    const chosenIds = chosenTherapies.map(name => categoryServices.find(s => s.name === name)?.id || '');
+    const serviceIds = chosenIds.every(Boolean) ? chosenIds : [];
+
+    if (items.length === 0 && !itemsOptional) {
       setError('Добавьте хотя бы один препарат');
       return;
     }
@@ -143,14 +202,16 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
         date: sheet?.date || now.toISOString(),
         month: sheet?.month || month,
         callCategory,
-        therapyName: therapyNames.join(', '),
-        therapyCost: parseFloat(therapyCost) || 0,
+        therapyName: chosenTherapies.join(', '),
+        serviceIds,
         items,
         totalAmount,
         archived: sheet?.archived || false,
       };
+      // Старая стоимость из кэша телефона в таблицу не отправляется — её пересчитает таблица
+      const { therapyCost: _oldCost, ...sheetWithoutCost } = sheet || ({} as ExpenseSheet);
       const result = sheet
-        ? await updateExpenseSheet({ ...sheet, ...sheetData })
+        ? await updateExpenseSheet({ ...sheetWithoutCost, ...sheetData })
         : await createExpenseSheet(sheetData);
 
       if (result) {
@@ -189,7 +250,7 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
           </div>
 
           <div className="mb-4">
-            <label className="text-sm text-slate-500 mb-2 block">Дата рождения</label>
+            <label className="text-sm text-slate-500 mb-2 block">Дата рождения *</label>
             <input
               type="text"
               inputMode="numeric"
@@ -257,13 +318,13 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
             </div>
           )}
 
-          {(callCategory === 'Вызов однократно' || callCategory === 'Вызов + повторы') && (
+          {requiresTherapy && (
             <div className="mb-4">
-              <label className="text-sm text-slate-500 mb-2 block">Название терапии</label>
-              {therapyNames.map((name, index) => (
+              <label className="text-sm text-slate-500 mb-2 block">{therapyLabel(callCategory).label}</label>
+              {(callCategory === 'Вызов + повторы' ? therapyNames : therapyNames.slice(0, 1)).map((name, index) => (
                 <div key={index} className="flex gap-2 mb-2">
                   <select
-                    className="flex-1 border border-slate-200 rounded-lg p-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    className="flex-1 min-w-0 w-full border border-slate-200 rounded-lg p-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                     value={name}
                     onChange={(e) => {
                       const newNames = [...therapyNames];
@@ -271,14 +332,10 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
                       setTherapyNames(newNames);
                     }}
                   >
-                    <option value="">Выберите тип терапии</option>
-                    <option value="Обычное очищение">Обычное очищение</option>
-                    <option value="Двойное очищение">Двойное очищение</option>
-                    <option value="Глубокое очищение">Глубокое очищение</option>
-                    <option value="3 Detox">3 Detox</option>
-                    <option value="4 Detox">4 Detox</option>
-                    <option value="5 Detox">5 Detox</option>
-                    <option value="Smart Detox">Smart Detox</option>
+                    <option value="">{therapyLabel(callCategory).placeholder}</option>
+                    {therapyOptions.map(option => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
                   </select>
                   {callCategory === 'Вызов + повторы' && (
                     <button
@@ -293,53 +350,13 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
               ))}
             </div>
           )}
-
-          {callCategory === 'Курс' && (
-            <div className="mb-4">
-              <label className="text-sm text-slate-500 mb-2 block">Название терапии</label>
-              {therapyNames.map((name, index) => (
-                <div key={index} className="flex gap-2 mb-2">
-                  <select
-                    className="flex-1 min-w-0 w-full border border-slate-200 rounded-lg p-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                    value={name}
-                    onChange={(e) => {
-                      const newNames = [...therapyNames];
-                      newNames[index] = e.target.value;
-                      setTherapyNames(newNames);
-                    }}
-                  >
-                    <option value="">Выберите тип терапии</option>
-                    <option value="Восстановление стандарт">Восстановление стандарт</option>
-                    <option value="Восстановление стандарт +">Восстановление стандарт +</option>
-                    <option value="Восстановление максимум">Восстановление максимум</option>
-                    <option value="Восстановление + кардио">Восстановление + кардио</option>
-                    <option value="Восстановление + нейрооптимизация (NO терапия)">Восстановление + нейрооптимизация (NO терапия)</option>
-                    <option value="Нейро Рестарт">Нейро Рестарт</option>
-                    <option value="Красота и молодость">Красота и молодость</option>
-                    <option value="Терапия IQ - 1">Терапия IQ - 1</option>
-                    <option value="Терапия IQ - 2">Терапия IQ - 2</option>
-                    <option value="Повышение иммунитета-1">Повышение иммунитета-1</option>
-                    <option value="Повышение иммунитета - 2">Повышение иммунитета - 2</option>
-                  </select>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="mb-4">
-            <label className="text-sm text-slate-500 mb-2 block">Стоимость терапии (₽)</label>
-            <input
-              type="number"
-              className="w-full border border-slate-200 rounded-lg p-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={therapyCost}
-              onChange={(e) => setTherapyCost(e.target.value)}
-              placeholder="0"
-            />
-          </div>
         </div>
 
         <div className="bg-white p-5 rounded-xl border border-slate-200 mb-5">
-          <h2 className="text-lg font-bold text-slate-800 mb-4">Препараты и расходники</h2>
+          <h2 className="text-lg font-bold text-slate-800 mb-4">
+            Препараты и расходники
+            {itemsOptional && <span className="block text-sm font-normal text-slate-500 mt-1">Необязательно для этой категории</span>}
+          </h2>
           
           <button
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-lg mb-4 transition-colors"
@@ -381,16 +398,36 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
           }).map(item => (
             <div key={item.nomenclatureId} className="bg-slate-50 p-3 rounded-lg mb-2 border border-slate-200">
               <div className="flex justify-between items-center">
-                <p className="text-sm text-slate-700 flex-1">{item.name}</p>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  aria-label={`Количество: ${item.name}`}
-                  value={item.quantity}
-                  onChange={event => updateQuantity(item.nomenclatureId, parseInt(event.target.value) || 0)}
-                  className="w-20 text-sm font-medium text-blue-600 bg-blue-50 px-3 py-2 rounded ml-2 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <p className="text-sm text-slate-700 flex-1 min-w-0">{item.name}</p>
+                <div className="flex items-center gap-1.5 ml-2 shrink-0">
+                  {/* «−» на единице убирает позицию из листа */}
+                  <button
+                    type="button"
+                    aria-label={`Убрать одну: ${item.name}`}
+                    className="w-9 h-9 rounded-lg bg-red-600 active:bg-red-700 hover:bg-red-700 text-white text-xl font-bold leading-none flex items-center justify-center transition-colors"
+                    onClick={() => updateQuantity(item.nomenclatureId, item.quantity - 1)}
+                  >
+                    −
+                  </button>
+                  {/* Текстовое поле с цифровой клавиатурой — без стрелок вверх/вниз, как у type="number" */}
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    aria-label={`Количество: ${item.name}`}
+                    value={item.quantity}
+                    onChange={event => updateQuantity(item.nomenclatureId, parseInt(event.target.value.replace(/\D/g, '')) || 0)}
+                    className="w-14 text-lg font-bold text-blue-700 bg-blue-50 px-1 py-1 rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    type="button"
+                    aria-label={`Добавить одну: ${item.name}`}
+                    className="w-9 h-9 rounded-lg bg-green-600 active:bg-green-700 hover:bg-green-700 text-white text-xl font-bold leading-none flex items-center justify-center transition-colors"
+                    onClick={() => updateQuantity(item.nomenclatureId, item.quantity + 1)}
+                  >
+                    +
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -418,7 +455,7 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
         <button
           className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-lg transition-colors disabled:opacity-50"
           onClick={handleSubmit}
-          disabled={loading || isCreationBlocked || !patientName.trim() || items.length === 0}
+          disabled={loading || isCreationBlocked || !patientName.trim() || (items.length === 0 && !itemsOptional)}
         >
           {loading ? (
             <span className="flex items-center justify-center">
@@ -436,7 +473,7 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
 
       {showNomenclaturePicker && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-5 w-full max-w-md max-h-[80vh] flex flex-col">
+          <div className="bg-white rounded-xl p-5 w-full max-w-md max-h-[calc(var(--vvh,100vh)*0.85)] flex flex-col">
             <h3 className="text-xl font-bold text-slate-800 mb-4">Внесите количество</h3>
             <div className="overflow-y-auto flex-1">
               {nomenclatureLoading ? (
@@ -538,27 +575,45 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
                   // Создаём уникальный ключ на основе имени и индекса
                   const uniqueKey = `${name}_${index}`;
 
+                  // Количество набирается тапом по названию (+1); поле только показывает число,
+                  // «−» убирает лишний тап
+                  const count = quantities[uniqueKey] || 0;
+                  const changeCount = (delta: number) => setQuantities(prev => ({
+                    ...prev,
+                    [uniqueKey]: Math.max(0, (prev[uniqueKey] || 0) + delta)
+                  }));
+
                   return (
                     <div
                       key={uniqueKey}
-                      className="p-4 border-b border-slate-200 flex items-center gap-3"
+                      className={`border-b border-slate-200 flex items-center gap-2 ${count > 0 ? 'bg-blue-50' : ''}`}
                     >
-                      <div className="flex-1 min-w-0">
+                      <button
+                        type="button"
+                        className="flex-1 min-w-0 p-4 text-left select-none active:bg-blue-100 transition-colors"
+                        onClick={() => changeCount(1)}
+                      >
                         <span className="text-base text-slate-800 font-medium block truncate">{name}</span>
-                      </div>
+                      </button>
+                      {count > 0 && (
+                        <button
+                          type="button"
+                          aria-label={`Убрать одну: ${name}`}
+                          className="w-10 h-10 shrink-0 rounded-lg border border-slate-200 bg-white text-xl font-bold text-slate-600 active:bg-slate-100"
+                          onClick={() => changeCount(-1)}
+                        >
+                          −
+                        </button>
+                      )}
                       <input
-                        type="number"
-                        min="0"
-                        value={quantities[uniqueKey] || 0}
-                        onChange={(e) => {
-                          const value = parseInt(e.target.value) || 0;
-                          setQuantities(prev => ({
-                            ...prev,
-                            [uniqueKey]: value
-                          }));
-                        }}
-                        className="w-20 border border-slate-200 rounded-lg p-2 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="0"
+                        type="text"
+                        readOnly
+                        tabIndex={-1}
+                        value={count}
+                        aria-label={`Количество: ${name}`}
+                        className={`w-14 mr-4 shrink-0 border rounded-lg p-2 text-center pointer-events-none select-none ${
+                          count > 0 ? 'border-blue-300 bg-white text-blue-700 font-bold' : 'border-slate-200 bg-slate-50 text-slate-400'
+                        }`}
                       />
                     </div>
                   );

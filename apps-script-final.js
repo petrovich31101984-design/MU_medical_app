@@ -1,12 +1,18 @@
 /**
  * СМУ - Система Медицинского Учёта
  * Google Apps Script Web App для руководителя + сотрудника
- * Версия 0.5.7
+ * Версия 0.5.12
  *  - getEmployees отдаёт список без паролей; getEmployeeWorkState — смена одного сотрудника
  *  - запись в таблицу (doPost) выполняется по одной, через блокировку
  *  - updateReturn: руководитель подтверждает, корректирует или отклоняет возврат
  *  - повторная отправка из офлайн-очереди телефона не создаёт дублей листов расхода, возвратов и сообщений
  *  - правка/удаление уже удалённого сообщения не считается ошибкой (очередь телефона не застревает)
+ *  - лист «Прайс услуг»: стоимость услуг по категориям выезда (getServicePrices, setupServicePrices)
+ *  - стоимость терапии в листе расхода сотрудника считается по «Прайсу услуг»; сотруднику она не отдаётся
+ *  - в прайсе: «Неоплаченная неустойка» и «Неоплаченный медотвод»
+ *  - управление прайсом из приложения руководителя: addServicePrice, updateServicePrice, deleteServicePrice
+ *  - getServiceList: список актуальных услуг без цен для приложения сотрудника;
+ *    стоимость терапии считается по кодам услуг (serviceIds), для старых листов — по названию
  */
 
 // ==================== ГЛАВНЫЕ ФУНКЦИИ ====================
@@ -32,6 +38,11 @@ function doGet(e) {
         return jsonResponse(getNomenclatureData());
       case 'getPrices':
         return jsonResponse(getPricesData());
+      case 'getServicePrices':
+        return jsonResponse(getServicePricesData());
+      case 'getServiceList':
+        // Для приложения сотрудника: только актуальные услуги, без цен
+        return jsonResponse(getServiceListData());
       case 'getArrivals':
         return jsonResponse(getArrivalsData());
       case 'getInitialStock':
@@ -104,6 +115,17 @@ function handlePost(e) {
         return jsonResponse({ success: true });
       case 'deleteNomenclature':
         deleteNomenclatureData(data.id);
+        return jsonResponse({ success: true });
+
+      // Прайс услуг
+      case 'addServicePrice':
+        addServicePriceData(data);
+        return jsonResponse({ success: true });
+      case 'updateServicePrice':
+        updateServicePriceData(data.id, data.data);
+        return jsonResponse({ success: true });
+      case 'deleteServicePrice':
+        deleteRow(SERVICE_PRICES_SHEET, data.id);
         return jsonResponse({ success: true });
 
       // Начальные остатки
@@ -474,6 +496,157 @@ function getPricesData() {
   return readSheetData('Цены');
 }
 
+// ==================== ПРАЙС УСЛУГ ====================
+
+const SERVICE_PRICES_SHEET = 'Прайс услуг';
+const SERVICE_PRICES_HEADERS = ['ID', 'Категория выезда', 'Название услуги', 'Стоимость (₽)', 'Актуальна', 'Дата изменения', 'Примечание'];
+
+// Услуги, которые сейчас можно выбрать в листе расхода приложения сотрудника.
+// «Вызов» — для категорий «Вызов однократно» и «Вызов + повторы».
+const DEFAULT_SERVICES = [
+  ['Вызов', 'Обычное очищение'],
+  ['Вызов', 'Двойное очищение'],
+  ['Вызов', 'Глубокое очищение'],
+  ['Вызов', '3 Detox'],
+  ['Вызов', '4 Detox'],
+  ['Вызов', '5 Detox'],
+  ['Вызов', 'Smart Detox'],
+  ['Курс', 'Восстановление стандарт'],
+  ['Курс', 'Восстановление стандарт +'],
+  ['Курс', 'Восстановление максимум'],
+  ['Курс', 'Восстановление + кардио'],
+  ['Курс', 'Восстановление + нейрооптимизация (NO терапия)'],
+  ['Курс', 'Нейро Рестарт'],
+  ['Курс', 'Красота и молодость'],
+  ['Курс', 'Терапия IQ - 1'],
+  ['Курс', 'Терапия IQ - 2'],
+  ['Курс', 'Повышение иммунитета-1'],
+  ['Курс', 'Повышение иммунитета - 2'],
+  ['Госпитализация', 'Ближняя госпитализация'],
+  ['Госпитализация', 'Дальняя госпитализация'],
+  ['Госпитализация', 'ГПС'],
+  ['Госпитализация', 'Другая госпитализация'],
+  ['Мед. отвод', 'Мед. отвод'],
+  ['Мед. отвод', 'Неоплаченный медотвод'],
+  ['Неустойка', 'Неустойка'],
+  ['Неустойка', 'Неоплаченная неустойка']
+];
+
+function getServicePricesData() {
+  return readSheetData(SERVICE_PRICES_SHEET);
+}
+
+// Создаёт лист «Прайс услуг» (если его нет) и дописывает услуги, которых в нём ещё нет.
+// Уже внесённые цены не трогает — запускать можно повторно. Стоимость заполняется вручную.
+function setupServicePrices() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SERVICE_PRICES_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(SERVICE_PRICES_SHEET);
+  }
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, SERVICE_PRICES_HEADERS.length).setValues([SERVICE_PRICES_HEADERS]);
+  }
+  sheet.getRange(1, 1, 1, SERVICE_PRICES_HEADERS.length).setFontWeight('bold');
+  sheet.setFrozenRows(1);
+
+  const existing = {};
+  getServicePricesData().forEach(row => {
+    existing[String(row['Категория выезда']).trim() + '|' + String(row['Название услуги']).trim()] = true;
+  });
+
+  const now = new Date();
+  const base = Date.now();
+  const newRows = DEFAULT_SERVICES
+    .filter(s => !existing[s[0] + '|' + s[1]])
+    .map((s, i) => ['SRV-' + (base + i), s[0], s[1], '', 'ДА', now, '']);
+
+  if (newRows.length > 0) {
+    sheet.getRange(sheet.getLastRow() + 1, 1, newRows.length, SERVICE_PRICES_HEADERS.length).setValues(newRows);
+  }
+  sheet.getRange(2, 4, Math.max(sheet.getLastRow() - 1, 1), 1).setNumberFormat('#,##0.00 ₽');
+  sheet.autoResizeColumns(1, SERVICE_PRICES_HEADERS.length);
+  Logger.log('Лист «' + SERVICE_PRICES_SHEET + '»: добавлено услуг — ' + newRows.length);
+  return newRows.length;
+}
+
+// Изменения прайса из приложения руководителя
+function addServicePriceData(data) {
+  // Листа ещё нет — создаём его вместе с услугами по умолчанию
+  if (!SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SERVICE_PRICES_SHEET)) setupServicePrices();
+  appendRow(SERVICE_PRICES_SHEET, {
+    'ID': data['ID'] || data.id || 'SRV-' + Date.now(),
+    'Категория выезда': data['Категория выезда'] ?? data.category ?? '',
+    'Название услуги': data['Название услуги'] ?? data.name ?? '',
+    'Стоимость (₽)': data['Стоимость (₽)'] ?? data.price ?? '',
+    'Актуальна': data['Актуальна'] ?? (data.active === false ? 'НЕТ' : 'ДА'),
+    'Дата изменения': new Date(),
+    'Примечание': data['Примечание'] ?? data.note ?? ''
+  });
+}
+
+function updateServicePriceData(id, updates) {
+  const row = {};
+  if (updates.category !== undefined) row['Категория выезда'] = updates.category;
+  if (updates.name !== undefined) row['Название услуги'] = updates.name;
+  if (updates.price !== undefined) row['Стоимость (₽)'] = updates.price;
+  if (updates.active !== undefined) row['Актуальна'] = updates.active === false ? 'НЕТ' : 'ДА';
+  if (updates.note !== undefined) row['Примечание'] = updates.note;
+  row['Дата изменения'] = new Date();
+  updateRow(SERVICE_PRICES_SHEET, id, row);
+}
+
+// Категория выезда в листе расхода → категория в прайсе
+function servicePriceCategory(callCategory) {
+  const category = String(callCategory || '').trim();
+  if (category === 'Вызов однократно' || category === 'Вызов + повторы') return 'Вызов';
+  return category;
+}
+
+// Стоимость терапии по прайсу: сумма цен выбранных услуг («Вызов + повторы» — несколько через запятую).
+// Если услуга не выбрана (старые листы «Мед. отвод» и «Неустойка»), берём строку с названием категории.
+// Коды услуг (serviceIds) приходят из приложения сотрудника и надёжнее названий:
+// услугу могли переименовать, пока телефон был без сети. Если кода нет — ищем по названию.
+function calcTherapyCost(callCategory, therapyName, serviceIds) {
+  const category = servicePriceCategory(callCategory);
+  if (!category) return 0;
+
+  const activeRows = getServicePricesData().filter(row =>
+    String(row['Актуальна']).trim().toUpperCase() !== 'НЕТ'
+  );
+  const priceOf = row => Number(row['Стоимость (₽)']) || 0;
+
+  const ids = (Array.isArray(serviceIds) ? serviceIds : String(serviceIds || '').split(','))
+    .map(id => String(id).trim()).filter(Boolean);
+  if (ids.length > 0) {
+    const byId = {};
+    activeRows.forEach(row => { byId[String(row['ID']).trim()] = priceOf(row); });
+    if (ids.every(id => byId[id] !== undefined)) {
+      return ids.reduce((sum, id) => sum + byId[id], 0);
+    }
+  }
+
+  let names = String(therapyName || '').split(', ').map(n => n.trim()).filter(Boolean);
+  if (names.length === 0) names = [category];
+  const byName = {};
+  activeRows.forEach(row => {
+    if (String(row['Категория выезда']).trim() !== category) return;
+    byName[String(row['Название услуги']).trim()] = priceOf(row);
+  });
+  return names.reduce((sum, name) => sum + (byName[name] || 0), 0);
+}
+
+function getServiceListData() {
+  return getServicePricesData()
+    .filter(row => String(row['Актуальна']).trim().toUpperCase() !== 'НЕТ')
+    .filter(row => String(row['Название услуги']).trim() !== '')
+    .map(row => ({
+      id: String(row['ID']).trim(),
+      category: String(row['Категория выезда']).trim(),
+      name: String(row['Название услуги']).trim()
+    }));
+}
+
 // ==================== НАЧАЛЬНЫЕ ОСТАТКИ ====================
 
 function getInitialStockData(employeeId) {
@@ -668,6 +841,11 @@ function addExpenseSheetData(data) {
     ? positions
     : JSON.stringify(positions || []);
 
+  const callCategory = data['Категория выезда'] ?? data.callCategory ?? '';
+  const therapyName = data['Название терапии'] ?? data.therapyName ?? '';
+  // Приложение сотрудника стоимость не передаёт — берём из прайса
+  const therapyCost = data['Стоимость терапии'] ?? data.therapyCost ?? calcTherapyCost(callCategory, therapyName, data.serviceIds);
+
   appendRow('Листы расхода', {
     'ID': data['ID'] || data.id || 'SHEET-' + Date.now(),
     'Сотрудник_ID': data['Сотрудник_ID'] ?? data.employeeId ?? '',
@@ -676,9 +854,9 @@ function addExpenseSheetData(data) {
     'Дата рождения пациента': data['Дата рождения пациента'] ?? data.patientBirthDate ?? '',
     'Дата': data['Дата'] ?? data.date ?? '',
     'Месяц': data['Месяц'] ?? data.month ?? '',
-    'Категория выезда': data['Категория выезда'] ?? data.callCategory ?? '',
-    'Название терапии': data['Название терапии'] ?? data.therapyName ?? '',
-    'Стоимость терапии': data['Стоимость терапии'] ?? data.therapyCost ?? 0,
+    'Категория выезда': callCategory,
+    'Название терапии': therapyName,
+    'Стоимость терапии': therapyCost,
     'Итого по препаратам': data['Итого по препаратам'] ?? data.totalAmount ?? 0,
     'Позиции': serializedPositions,
     'Позиции (JSON)': serializedPositions,
@@ -695,6 +873,18 @@ function updateExpenseSheetData(id, updates) {
       : JSON.stringify(positions);
     updates['Позиции'] = serializedPositions;
     updates['Позиции (JSON)'] = serializedPositions;
+  }
+  // Сотрудник сменил категорию или терапию, а стоимость не передал — пересчитываем по прайсу
+  const serviceIds = updates.serviceIds;
+  delete updates.serviceIds;
+  if (updates['Стоимость терапии'] === undefined &&
+      (updates['Категория выезда'] !== undefined || updates['Название терапии'] !== undefined)) {
+    const current = readSheetData('Листы расхода').find(row => String(row['ID']).trim() === String(id).trim()) || {};
+    updates['Стоимость терапии'] = calcTherapyCost(
+      updates['Категория выезда'] ?? current['Категория выезда'],
+      updates['Название терапии'] ?? current['Название терапии'],
+      serviceIds
+    );
   }
   updateRow('Листы расхода', id, updates);
 }
@@ -887,6 +1077,11 @@ function authenticateEmployee(personalNumber, password) {
 function getEmployeeExpenseSheetsData(employeeId) {
   return getExpenseSheetsData()
     .filter(sheet => String(sheet['Сотрудник_ID']).trim() === String(employeeId).trim())
+    .map(sheet => {
+      // Стоимость терапии сотруднику не показываем
+      delete sheet['Стоимость терапии'];
+      return sheet;
+    })
     .map(sheet => ({
       ...sheet,
       id: sheet['ID'],
@@ -898,7 +1093,6 @@ function getEmployeeExpenseSheetsData(employeeId) {
       month: sheet['Месяц'],
       callCategory: sheet['Категория выезда'],
       therapyName: sheet['Название терапии'],
-      therapyCost: sheet['Стоимость терапии'],
       totalAmount: sheet['Итого по препаратам'],
       items: sheet['Позиции'] ?? sheet['Позиции (JSON)'] ?? [],
       archived: sheet['Архив'] === 'ДА' || sheet['Архив'] === true
@@ -936,6 +1130,7 @@ function setupDatabase() {
     'Сотрудники',
     'Номенклатура',
     'Цены',
+    'Прайс услуг',
     'Начальные остатки',
     'Приход',
     'Расход',
@@ -952,6 +1147,7 @@ function setupDatabase() {
     'Сотрудники': ['ID', 'Персональный номер', 'ФИО', 'Пароль (хэш)', 'Статус', 'Должность', 'Дата найма', 'Дата увольнения', 'Заблокирован', 'Телефон', 'Email', 'Дата регистрации', 'Последний вход', 'Примечание', 'Смена открыта'],
     'Номенклатура': ['ID', 'Название', 'Категория', 'Ед. измерения', 'Производитель', 'Количество в упаковке', 'Штрих-код', 'Актуальна', 'Дата создания', 'Примечание'],
     'Цены': ['ID', 'Номенклатура_ID', 'Название', 'Цена за ед. (₽)', 'Дата начала', 'Дата окончания', 'Кем изменено', 'Дата изменения', 'Примечание'],
+    'Прайс услуг': SERVICE_PRICES_HEADERS,
     'Начальные остатки': ['ID', 'Сотрудник_ID', 'ФИО', 'Номенклатура_ID', 'Название', 'Количество', 'Ед. изм.', 'Дата', 'Кем внесено', 'Период', 'Примечание'],
     'Приход': ['ID', 'Сотрудник_ID', 'ФИО сотрудника', 'Дата', 'Месяц', 'Сумма (₽)', 'Количество смен', 'Кем внесено', 'Тип', 'Комментарий', 'Позиции (JSON)', 'Дата внесения', 'Архив'],
     'Расход': ['ID', 'Сотрудник_ID', 'Дата внесения', 'Дата вызова', 'Месяц', 'Номенклатура_ID', 'Количество', 'Пациент ФИО', 'Пациент ДР', 'Вызов_ID'],
@@ -977,6 +1173,8 @@ function setupDatabase() {
       Logger.log('Добавлены заголовки для листа: ' + sheetName);
     }
   });
+
+  setupServicePrices();
 
   const defaultSheet = ss.getSheetByName('Лист1');
   if (defaultSheet && ss.getSheets().length > 1) {

@@ -1,0 +1,53 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Адрес приложения сотрудника. APK — только «окно» к этому сайту:
+// обновления сайта приходят сами, переустанавливать APK не нужно.
+def appUrl = project.findProperty('appUrl') ?: 'https://petrovich31101984-design.github.io/MU_medical_app/'
+
+// Ключ подписи берётся из переменных окружения (GitHub Actions → секреты репозитория).
+// Один и тот же ключ нужен, чтобы новая версия APK ставилась поверх старой.
+def keystorePath = System.getenv('SMU_KEYSTORE_PATH')
+
+android {
+    namespace 'ru.smu.employee'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'ru.smu.employee'
+        minSdk 24
+        targetSdk 34
+        versionCode((System.getenv('GITHUB_RUN_NUMBER') ?: '1') as int)
+        versionName '0.5.5'
+        buildConfigField 'String', 'APP_URL', "\"${appUrl}\""
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    signingConfigs {
+        release {
+            if (keystorePath) {
+                storeFile file(keystorePath)
+                storePassword System.getenv('SMU_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('SMU_KEY_ALIAS')
+                keyPassword System.getenv('SMU_KEY_PASSWORD')
+                storeType 'pkcs12'
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig keystorePath ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

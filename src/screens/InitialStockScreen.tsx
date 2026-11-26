@@ -96,6 +96,13 @@ export default function InitialStockScreen({ onComplete }: InitialStockScreenPro
     }
   };
 
+  // Изменить количество на delta (кнопки «−»/«+»); 0 — позиция уходит из списка добавленных
+  const changeQuantity = (id: string, delta: number) => {
+    const current = parseInt(quantities[id] ?? '0', 10) || 0;
+    handleQuantityChange(id, String(Math.max(0, current + delta)));
+  };
+
+
   const handleCategoryComplete = () => {
     if (!selectedCategory) return;
 
@@ -174,7 +181,8 @@ export default function InitialStockScreen({ onComplete }: InitialStockScreenPro
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-5">
           <p className="text-sm text-blue-900 font-medium mb-1">Перед началом работы</p>
           <p className="text-sm text-blue-800 leading-relaxed">
-            Укажите количество и сохраните каждую категорию. Если позиции нет, оставьте 0.
+            В каждой категории нажимайте на название позиции — каждое нажатие добавляет 1, или введите число в поле справа. Затем сохраните категорию.
+            Позиции, которых у вас нет, оставьте с 0.
             Переход на главный экран станет доступен после сохранения всех категорий.
           </p>
         </div>
@@ -234,30 +242,54 @@ export default function InitialStockScreen({ onComplete }: InitialStockScreenPro
                 В этой категории нет активной номенклатуры
               </div>
             ) : (
-              <div className="space-y-3 mb-4">
-                {categoryItems.map(item => (
-                  <div key={item.id} className="bg-white rounded-xl border border-slate-200 p-4">
-                    <div className="mb-3">
-                      <h3 className="font-bold text-slate-800">{item.name}</h3>
-                      {item.manufacturer && (
-                        <p className="text-sm text-slate-500 mt-1">{item.manufacturer}</p>
+              <div className="bg-white rounded-xl border border-slate-200 mb-4 overflow-hidden">
+                <div className="p-4 border-b border-slate-200">
+                  <h3 className="text-xl font-bold text-slate-800">Внесите количество</h3>
+                  <p className="text-sm text-slate-500 mt-1">Нажмите на название, чтобы добавить 1</p>
+                </div>
+                {/* Как окно «Внесите количество» в листе расхода: тап по названию +1, «−» убирает лишний тап.
+                    Большое количество можно ввести числом в поле (цифровая клавиатура, без стрелок) */}
+                {categoryItems.map(item => {
+                  const count = parseInt(quantities[item.id] ?? '0', 10) || 0;
+                  return (
+                    <div
+                      key={item.id}
+                      className={`border-b border-slate-200 last:border-b-0 flex items-center gap-2 ${count > 0 ? 'bg-blue-50' : ''}`}
+                    >
+                      <button
+                        type="button"
+                        className="flex-1 min-w-0 p-4 text-left select-none active:bg-blue-100 transition-colors"
+                        onClick={() => changeQuantity(item.id, 1)}
+                      >
+                        <span className="text-base text-slate-800 font-medium block truncate">{item.name}</span>
+                        {item.unit && <span className="text-xs text-slate-400 block">{item.unit}</span>}
+                      </button>
+                      {count > 0 && (
+                        <button
+                          type="button"
+                          aria-label={`Убрать одну: ${item.name}`}
+                          className="w-10 h-10 shrink-0 rounded-lg border border-slate-200 bg-white text-xl font-bold text-slate-600 active:bg-slate-100"
+                          onClick={() => changeQuantity(item.id, -1)}
+                        >
+                          −
+                        </button>
                       )}
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={quantities[item.id] ?? '0'}
+                        aria-label={`Количество: ${item.name}`}
+                        // Нажали в поле — число выделяется, новое вводится поверх
+                        onFocus={event => event.target.select()}
+                        onChange={event => handleQuantityChange(item.id, event.target.value.replace(/^0+(?=\d)/, ''))}
+                        className={`w-16 mr-4 shrink-0 border rounded-lg p-2 text-center text-lg font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          count > 0 || quantities[item.id] === '' ? 'border-blue-300 bg-white text-blue-700' : 'border-slate-200 bg-slate-50 text-slate-400'
+                        }`}
+                      />
                     </div>
-                    <label className="text-sm text-slate-600 mb-2 block" htmlFor={`stock-${item.id}`}>
-                      Количество{item.unit ? `, ${item.unit}` : ''}
-                    </label>
-                    <input
-                      id={`stock-${item.id}`}
-                      type="number"
-                      inputMode="numeric"
-                      min="0"
-                      step="1"
-                      className="w-full border border-slate-200 rounded-lg p-3 text-base bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      value={quantities[item.id] ?? '0'}
-                      onChange={event => handleQuantityChange(item.id, event.target.value)}
-                    />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
             <button
@@ -285,6 +317,7 @@ export default function InitialStockScreen({ onComplete }: InitialStockScreenPro
           </button>
         )}
       </div>
+
     </div>
   );
 }
