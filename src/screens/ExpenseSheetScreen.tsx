@@ -454,14 +454,15 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
                   >
                     −
                   </button>
+                  {/* Текстовое поле с цифровой клавиатурой — без стрелок вверх/вниз, как у type="number" */}
                   <input
-                    type="number"
-                    min="0"
-                    step="1"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     aria-label={`Количество: ${item.name}`}
                     value={item.quantity}
-                    onChange={event => updateQuantity(item.nomenclatureId, parseInt(event.target.value) || 0)}
-                    className="w-14 text-sm font-medium text-blue-600 bg-blue-50 px-1 py-2 rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onChange={event => updateQuantity(item.nomenclatureId, parseInt(event.target.value.replace(/\D/g, '')) || 0)}
+                    className="w-14 text-lg font-bold text-blue-700 bg-blue-50 px-1 py-1 rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <button
                     type="button"
