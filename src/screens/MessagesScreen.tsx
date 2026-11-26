@@ -291,7 +291,7 @@ export default function MessagesScreen({ onBack }: MessagesScreenProps) {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="bg-white p-4 border-t border-slate-200 flex items-end gap-2">
+      <div className="bg-white p-4 border-t border-slate-200 flex items-end gap-2 sticky bottom-0 z-10">
         <textarea
           className="flex-1 bg-slate-50 rounded-full px-4 py-2 resize-none max-h-24 focus:outline-none focus:ring-2 focus:ring-blue-500"
           value={newMessage}

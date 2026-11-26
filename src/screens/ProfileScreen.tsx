@@ -139,7 +139,7 @@ export default function ProfileScreen({ onBack, onEditExpenseSheet }: ProfileScr
 
       {showRecentSheets && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-md max-h-[80vh] flex flex-col">
+          <div className="bg-white rounded-xl w-full max-w-md max-h-[calc(var(--vvh,100vh)*0.85)] flex flex-col">
             <div className="flex items-center justify-between p-5 border-b border-slate-200">
               {viewingSheet ? (
                 <div className="flex items-center gap-2 min-w-0">

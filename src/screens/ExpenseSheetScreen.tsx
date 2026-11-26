@@ -473,7 +473,7 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
 
       {showNomenclaturePicker && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-5 w-full max-w-md max-h-[80vh] flex flex-col">
+          <div className="bg-white rounded-xl p-5 w-full max-w-md max-h-[calc(var(--vvh,100vh)*0.85)] flex flex-col">
             <h3 className="text-xl font-bold text-slate-800 mb-4">Внесите количество</h3>
             <div className="overflow-y-auto flex-1">
               {nomenclatureLoading ? (
