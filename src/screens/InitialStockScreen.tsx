@@ -86,7 +86,7 @@ export default function InitialStockScreen({ onComplete }: InitialStockScreenPro
   const selectedCategoryLabel = STOCK_CATEGORIES.find(category => category.id === selectedCategory)?.label;
 
   // Поле количества, в котором сейчас вводят число, и число в нём до нажатия
-  const [editing, setEditing] = useState<{ id: string; value: string } | null>(null);
+  const [editing, setEditing] = useState<{ id: string; value: string; typed: boolean } | null>(null);
 
   const handleQuantityChange = (id: string, value: string) => {
     if (/^\d*$/.test(value)) {
@@ -281,28 +281,32 @@ export default function InitialStockScreen({ onComplete }: InitialStockScreenPro
                         type="text"
                         inputMode="numeric"
                         pattern="[0-9]*"
-                        value={quantities[item.id] ?? '0'}
-                        placeholder={editing?.id === item.id ? editing.value : undefined}
+                        // Ноль не показываем — пустое поле и есть «0»
+                        value={quantities[item.id] === '0' ? '' : quantities[item.id] ?? ''}
+                        placeholder={editing?.id === item.id && editing.value !== '0' ? editing.value : undefined}
                         aria-label={`Количество: ${item.name}`}
                         // Нажали в поле — оно очищается, новое число вводится вместо старого (старое видно
                         // серой подсказкой). Без выделения текста: на телефоне выделение открывало меню
                         // «Вырезать / Копировать», которое мешало вводу.
                         onFocus={() => {
                           const value = quantities[item.id] ?? '0';
-                          setEditing({ id: item.id, value });
+                          setEditing({ id: item.id, value, typed: false });
                           setQuantities(previous => ({ ...previous, [item.id]: '' }));
                         }}
                         onBlur={() => {
-                          // Ничего не ввели — возвращаем прежнее число
+                          // Ничего не вводили — возвращаем прежнее число; ввели и стёрли — это 0
                           if (editing?.id === item.id) {
-                            const restored = editing.value;
+                            const restored = editing.typed ? '0' : editing.value;
                             setQuantities(previous => (previous[item.id] === '' ? { ...previous, [item.id]: restored } : previous));
                           }
                           setEditing(null);
                         }}
-                        onChange={event => handleQuantityChange(item.id, event.target.value.replace(/^0+(?=\d)/, ''))}
+                        onChange={event => {
+                          setEditing(previous => (previous?.id === item.id ? { ...previous, typed: true } : previous));
+                          handleQuantityChange(item.id, event.target.value.replace(/^0+(?=\d)/, ''));
+                        }}
                         className={`w-16 mr-4 shrink-0 border rounded-lg p-2 text-center text-lg font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                          count > 0 || quantities[item.id] === '' ? 'border-blue-300 bg-white text-blue-700' : 'border-slate-200 bg-slate-50 text-slate-400'
+                          count > 0 || editing?.id === item.id ? 'border-blue-300 bg-white text-blue-700' : 'border-slate-200 bg-slate-50 text-slate-400'
                         }`}
                       />
                     </div>
