@@ -121,7 +121,7 @@ export default function SettingsScreen({ onBack }: SettingsScreenProps) {
 
         {/* Подпись © — в самом низу экрана */}
         <p className="text-center text-slate-400 text-xs mt-auto pt-5">
-          © {new Date().getFullYear()} СМУ • Выездная медицинская помощь • Петрович Е.В.
+          © {new Date().getFullYear()} СМУ • Система медицинского учёта • Петрович Е.В.
         </p>
       </div>
     </div>
