@@ -37,6 +37,18 @@ const pickerGroup = (nom: Nomenclature) => {
   return 3;
 };
 
+// Полная существующая дата «ДД.ММ.ГГГГ», не в будущем и не раньше 1900 года
+const isValidBirthDate = (value: string) => {
+  const match = value.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (!match) return false;
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return false;
+  return year >= 1900 && date.getTime() <= Date.now();
+};
+
 const formatStoredBirthDate = (value: string) => {
   const isoDate = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (isoDate) return `${isoDate[3]}.${isoDate[2]}.${isoDate[1]}`;
@@ -149,6 +161,16 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
       return;
     }
 
+    if (!patientBirthDate.trim()) {
+      setError('Введите дату рождения пациента');
+      return;
+    }
+
+    if (!isValidBirthDate(patientBirthDate)) {
+      setError('Проверьте дату рождения: нужна существующая дата в формате ДД.ММ.ГГГГ, не позже сегодняшнего дня');
+      return;
+    }
+
     // Стоимость терапии берётся из «Прайса услуг» по выбранной терапии, поэтому без неё лист не сохраняем
     const chosenTherapies = therapyNames.map(n => n.trim()).filter(Boolean);
     if (CATEGORIES_WITH_THERAPY.includes(callCategory) && chosenTherapies.length === 0) {
@@ -221,7 +243,7 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
           </div>
 
           <div className="mb-4">
-            <label className="text-sm text-slate-500 mb-2 block">Дата рождения</label>
+            <label className="text-sm text-slate-500 mb-2 block">Дата рождения *</label>
             <input
               type="text"
               inputMode="numeric"
