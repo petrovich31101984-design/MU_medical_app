@@ -23,7 +23,7 @@ type InitialStockStatus = 'checking' | 'required' | 'completed' | 'error';
 
 export default function App() {
   const { isAuthenticated, employee, loadSession, logout } = useAuthStore();
-  const { loadNomenclature, loadExpenseSheets, loadMessages, loadAnnouncements } = useDataStore();
+  const { loadNomenclature, loadServices, loadExpenseSheets, loadMessages, loadAnnouncements } = useDataStore();
   const [isConfigured, setIsConfigured] = useState<boolean | null>(null);
   const [currentScreen, setCurrentScreen] = useState<Screen>('Login');
   const [initialStockStatus, setInitialStockStatus] = useState<InitialStockStatus>('checking');
@@ -82,6 +82,7 @@ export default function App() {
 
         await Promise.all([
           loadNomenclature(),
+          loadServices(),
           loadExpenseSheets(employee.id),
           loadMessages(employee.id),
           loadAnnouncements(),

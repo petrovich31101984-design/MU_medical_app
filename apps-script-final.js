@@ -1,7 +1,7 @@
 /**
  * СМУ - Система Медицинского Учёта
  * Google Apps Script Web App для руководителя + сотрудника
- * Версия 0.5.11
+ * Версия 0.5.12
  *  - getEmployees отдаёт список без паролей; getEmployeeWorkState — смена одного сотрудника
  *  - запись в таблицу (doPost) выполняется по одной, через блокировку
  *  - updateReturn: руководитель подтверждает, корректирует или отклоняет возврат
@@ -11,6 +11,8 @@
  *  - стоимость терапии в листе расхода сотрудника считается по «Прайсу услуг»; сотруднику она не отдаётся
  *  - в прайсе: «Неоплаченная неустойка» и «Неоплаченный медотвод»
  *  - управление прайсом из приложения руководителя: addServicePrice, updateServicePrice, deleteServicePrice
+ *  - getServiceList: список актуальных услуг без цен для приложения сотрудника;
+ *    стоимость терапии считается по кодам услуг (serviceIds), для старых листов — по названию
  */
 
 // ==================== ГЛАВНЫЕ ФУНКЦИИ ====================
@@ -38,6 +40,9 @@ function doGet(e) {
         return jsonResponse(getPricesData());
       case 'getServicePrices':
         return jsonResponse(getServicePricesData());
+      case 'getServiceList':
+        // Для приложения сотрудника: только актуальные услуги, без цен
+        return jsonResponse(getServiceListData());
       case 'getArrivals':
         return jsonResponse(getArrivalsData());
       case 'getInitialStock':
@@ -600,19 +605,46 @@ function servicePriceCategory(callCategory) {
 
 // Стоимость терапии по прайсу: сумма цен выбранных услуг («Вызов + повторы» — несколько через запятую).
 // Если услуга не выбрана (старые листы «Мед. отвод» и «Неустойка»), берём строку с названием категории.
-function calcTherapyCost(callCategory, therapyName) {
+// Коды услуг (serviceIds) приходят из приложения сотрудника и надёжнее названий:
+// услугу могли переименовать, пока телефон был без сети. Если кода нет — ищем по названию.
+function calcTherapyCost(callCategory, therapyName, serviceIds) {
   const category = servicePriceCategory(callCategory);
   if (!category) return 0;
+
+  const activeRows = getServicePricesData().filter(row =>
+    String(row['Актуальна']).trim().toUpperCase() !== 'НЕТ'
+  );
+  const priceOf = row => Number(row['Стоимость (₽)']) || 0;
+
+  const ids = (Array.isArray(serviceIds) ? serviceIds : String(serviceIds || '').split(','))
+    .map(id => String(id).trim()).filter(Boolean);
+  if (ids.length > 0) {
+    const byId = {};
+    activeRows.forEach(row => { byId[String(row['ID']).trim()] = priceOf(row); });
+    if (ids.every(id => byId[id] !== undefined)) {
+      return ids.reduce((sum, id) => sum + byId[id], 0);
+    }
+  }
+
   let names = String(therapyName || '').split(', ').map(n => n.trim()).filter(Boolean);
   if (names.length === 0) names = [category];
-
-  const prices = {};
-  getServicePricesData().forEach(row => {
-    if (String(row['Актуальна']).trim().toUpperCase() === 'НЕТ') return;
+  const byName = {};
+  activeRows.forEach(row => {
     if (String(row['Категория выезда']).trim() !== category) return;
-    prices[String(row['Название услуги']).trim()] = Number(row['Стоимость (₽)']) || 0;
+    byName[String(row['Название услуги']).trim()] = priceOf(row);
   });
-  return names.reduce((sum, name) => sum + (prices[name] || 0), 0);
+  return names.reduce((sum, name) => sum + (byName[name] || 0), 0);
+}
+
+function getServiceListData() {
+  return getServicePricesData()
+    .filter(row => String(row['Актуальна']).trim().toUpperCase() !== 'НЕТ')
+    .filter(row => String(row['Название услуги']).trim() !== '')
+    .map(row => ({
+      id: String(row['ID']).trim(),
+      category: String(row['Категория выезда']).trim(),
+      name: String(row['Название услуги']).trim()
+    }));
 }
 
 // ==================== НАЧАЛЬНЫЕ ОСТАТКИ ====================
@@ -812,7 +844,7 @@ function addExpenseSheetData(data) {
   const callCategory = data['Категория выезда'] ?? data.callCategory ?? '';
   const therapyName = data['Название терапии'] ?? data.therapyName ?? '';
   // Приложение сотрудника стоимость не передаёт — берём из прайса
-  const therapyCost = data['Стоимость терапии'] ?? data.therapyCost ?? calcTherapyCost(callCategory, therapyName);
+  const therapyCost = data['Стоимость терапии'] ?? data.therapyCost ?? calcTherapyCost(callCategory, therapyName, data.serviceIds);
 
   appendRow('Листы расхода', {
     'ID': data['ID'] || data.id || 'SHEET-' + Date.now(),
@@ -843,12 +875,15 @@ function updateExpenseSheetData(id, updates) {
     updates['Позиции (JSON)'] = serializedPositions;
   }
   // Сотрудник сменил категорию или терапию, а стоимость не передал — пересчитываем по прайсу
+  const serviceIds = updates.serviceIds;
+  delete updates.serviceIds;
   if (updates['Стоимость терапии'] === undefined &&
       (updates['Категория выезда'] !== undefined || updates['Название терапии'] !== undefined)) {
     const current = readSheetData('Листы расхода').find(row => String(row['ID']).trim() === String(id).trim()) || {};
     updates['Стоимость терапии'] = calcTherapyCost(
       updates['Категория выезда'] ?? current['Категория выезда'],
-      updates['Название терапии'] ?? current['Название терапии']
+      updates['Название терапии'] ?? current['Название терапии'],
+      serviceIds
     );
   }
   updateRow('Листы расхода', id, updates);

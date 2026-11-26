@@ -3,6 +3,7 @@ import { useAuthStore } from '../store/authStore';
 import { useDataStore } from '../store/dataStore';
 import { ExpenseItem, ExpenseSheet, Nomenclature } from '../types';
 import ScreenHeader from '../components/ScreenHeader';
+import { servicePriceCategory } from '../data/defaultServices';
 
 interface ExpenseSheetScreenProps {
   onBack: () => void;
@@ -55,33 +56,22 @@ const formatStoredBirthDate = (value: string) => {
   return formatBirthDate(value);
 };
 
-// Категории, для которых сотрудник выбирает услугу (её стоимость берётся из «Прайса услуг»).
-// Названия должны совпадать со строками листа «Прайс услуг».
+// Категории, для которых сотрудник выбирает услугу. Варианты берутся из «Прайса услуг»
+// (управляет руководитель), стоимость считает таблица.
 const CATEGORIES_WITH_THERAPY = ['Вызов однократно', 'Вызов + повторы', 'Курс', 'Госпитализация', 'Неустойка', 'Мед. отвод'];
-// Категории с выбором одного вида услуги
-const SINGLE_CHOICE_SERVICES: Record<string, { label: string; placeholder: string; options: string[] }> = {
-  'Госпитализация': {
-    label: 'Вид госпитализации',
-    placeholder: 'Выберите вид госпитализации',
-    options: ['Ближняя госпитализация', 'Дальняя госпитализация', 'ГПС', 'Другая госпитализация'],
-  },
-  'Неустойка': {
-    label: 'Вид неустойки',
-    placeholder: 'Выберите вид неустойки',
-    options: ['Неустойка', 'Неоплаченная неустойка'],
-  },
-  'Мед. отвод': {
-    label: 'Вид мед. отвода',
-    placeholder: 'Выберите вид мед. отвода',
-    options: ['Мед. отвод', 'Неоплаченный медотвод'],
-  },
+const THERAPY_LABELS: Record<string, { label: string; placeholder: string }> = {
+  'Госпитализация': { label: 'Вид госпитализации', placeholder: 'Выберите вид госпитализации' },
+  'Неустойка': { label: 'Вид неустойки', placeholder: 'Выберите вид неустойки' },
+  'Мед. отвод': { label: 'Вид мед. отвода', placeholder: 'Выберите вид мед. отвода' },
 };
+const therapyLabel = (category: string) =>
+  THERAPY_LABELS[category] || { label: 'Название терапии', placeholder: 'Выберите тип терапии' };
 // Для этих категорий лист расхода можно сохранить без препаратов
 const CATEGORIES_WITHOUT_ITEMS = ['Госпитализация', 'Неустойка', 'Мед. отвод'];
 
 export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreenProps) {
   const { employee } = useAuthStore();
-  const { nomenclature, loading: nomenclatureLoading, loadNomenclature, createExpenseSheet, updateExpenseSheet } = useDataStore();
+  const { nomenclature, services, loading: nomenclatureLoading, loadNomenclature, loadServices, createExpenseSheet, updateExpenseSheet } = useDataStore();
   const isCreationBlocked = !sheet && !(employee?.status === 'Активен' || employee?.shiftOpen === true);
 
   const [patientName, setPatientName] = useState(sheet?.patientName || '');
@@ -98,7 +88,19 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
 
   useEffect(() => {
     loadNomenclature();
+    loadServices();
   }, []);
+
+  // Услуги выбранной категории из прайса. В старом листе могла остаться услуга, которой в прайсе
+  // уже нет (переименовали или удалили) — показываем её, чтобы выбор не сбрасывался.
+  const priceCategory = servicePriceCategory(callCategory);
+  const categoryServices = services.filter(s => s.category === priceCategory);
+  const therapyOptions = [
+    ...categoryServices.map(s => s.name),
+    ...therapyNames.filter(n => n && !categoryServices.some(s => s.name === n)),
+  ];
+  // Если руководитель убрал из прайса все услуги категории, выбирать нечего — лист сохраняется без выбора
+  const requiresTherapy = CATEGORIES_WITH_THERAPY.includes(callCategory) && therapyOptions.length > 0;
 
   const addItem = (nom: Nomenclature, quantity: number = 1, uniqueKey: string) => {
     const nomData = nom as any;
@@ -173,10 +175,14 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
 
     // Стоимость терапии берётся из «Прайса услуг» по выбранной терапии, поэтому без неё лист не сохраняем
     const chosenTherapies = therapyNames.map(n => n.trim()).filter(Boolean);
-    if (CATEGORIES_WITH_THERAPY.includes(callCategory) && chosenTherapies.length === 0) {
-      setError(SINGLE_CHOICE_SERVICES[callCategory]?.placeholder || 'Выберите терапию');
+    if (requiresTherapy && chosenTherapies.length === 0) {
+      setError(therapyLabel(callCategory).placeholder);
       return;
     }
+    // Коды услуг: по ним таблица находит цену, даже если услугу успели переименовать.
+    // Если хоть у одной услуги кода нет (встроенный список) — таблица считает по названиям.
+    const chosenIds = chosenTherapies.map(name => categoryServices.find(s => s.name === name)?.id || '');
+    const serviceIds = chosenIds.every(Boolean) ? chosenIds : [];
 
     if (items.length === 0 && !itemsOptional) {
       setError('Добавьте хотя бы один препарат');
@@ -197,6 +203,7 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
         month: sheet?.month || month,
         callCategory,
         therapyName: chosenTherapies.join(', '),
+        serviceIds,
         items,
         totalAmount,
         archived: sheet?.archived || false,
@@ -311,13 +318,13 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
             </div>
           )}
 
-          {(callCategory === 'Вызов однократно' || callCategory === 'Вызов + повторы') && (
+          {requiresTherapy && (
             <div className="mb-4">
-              <label className="text-sm text-slate-500 mb-2 block">Название терапии</label>
-              {therapyNames.map((name, index) => (
+              <label className="text-sm text-slate-500 mb-2 block">{therapyLabel(callCategory).label}</label>
+              {(callCategory === 'Вызов + повторы' ? therapyNames : therapyNames.slice(0, 1)).map((name, index) => (
                 <div key={index} className="flex gap-2 mb-2">
                   <select
-                    className="flex-1 border border-slate-200 rounded-lg p-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    className="flex-1 min-w-0 w-full border border-slate-200 rounded-lg p-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                     value={name}
                     onChange={(e) => {
                       const newNames = [...therapyNames];
@@ -325,14 +332,10 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
                       setTherapyNames(newNames);
                     }}
                   >
-                    <option value="">Выберите тип терапии</option>
-                    <option value="Обычное очищение">Обычное очищение</option>
-                    <option value="Двойное очищение">Двойное очищение</option>
-                    <option value="Глубокое очищение">Глубокое очищение</option>
-                    <option value="3 Detox">3 Detox</option>
-                    <option value="4 Detox">4 Detox</option>
-                    <option value="5 Detox">5 Detox</option>
-                    <option value="Smart Detox">Smart Detox</option>
+                    <option value="">{therapyLabel(callCategory).placeholder}</option>
+                    {therapyOptions.map(option => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
                   </select>
                   {callCategory === 'Вызов + повторы' && (
                     <button
@@ -345,54 +348,6 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
                   )}
                 </div>
               ))}
-            </div>
-          )}
-
-          {callCategory === 'Курс' && (
-            <div className="mb-4">
-              <label className="text-sm text-slate-500 mb-2 block">Название терапии</label>
-              {therapyNames.map((name, index) => (
-                <div key={index} className="flex gap-2 mb-2">
-                  <select
-                    className="flex-1 min-w-0 w-full border border-slate-200 rounded-lg p-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                    value={name}
-                    onChange={(e) => {
-                      const newNames = [...therapyNames];
-                      newNames[index] = e.target.value;
-                      setTherapyNames(newNames);
-                    }}
-                  >
-                    <option value="">Выберите тип терапии</option>
-                    <option value="Восстановление стандарт">Восстановление стандарт</option>
-                    <option value="Восстановление стандарт +">Восстановление стандарт +</option>
-                    <option value="Восстановление максимум">Восстановление максимум</option>
-                    <option value="Восстановление + кардио">Восстановление + кардио</option>
-                    <option value="Восстановление + нейрооптимизация (NO терапия)">Восстановление + нейрооптимизация (NO терапия)</option>
-                    <option value="Нейро Рестарт">Нейро Рестарт</option>
-                    <option value="Красота и молодость">Красота и молодость</option>
-                    <option value="Терапия IQ - 1">Терапия IQ - 1</option>
-                    <option value="Терапия IQ - 2">Терапия IQ - 2</option>
-                    <option value="Повышение иммунитета-1">Повышение иммунитета-1</option>
-                    <option value="Повышение иммунитета - 2">Повышение иммунитета - 2</option>
-                  </select>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {SINGLE_CHOICE_SERVICES[callCategory] && (
-            <div className="mb-4">
-              <label className="text-sm text-slate-500 mb-2 block">{SINGLE_CHOICE_SERVICES[callCategory].label}</label>
-              <select
-                className="w-full border border-slate-200 rounded-lg p-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                value={therapyNames[0] || ''}
-                onChange={(e) => setTherapyNames([e.target.value])}
-              >
-                <option value="">{SINGLE_CHOICE_SERVICES[callCategory].placeholder}</option>
-                {SINGLE_CHOICE_SERVICES[callCategory].options.map(type => (
-                  <option key={type} value={type}>{type}</option>
-                ))}
-              </select>
             </div>
           )}
         </div>

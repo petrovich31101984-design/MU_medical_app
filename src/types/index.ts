@@ -44,6 +44,15 @@ export interface InitialStockItem {
   quantity: number;
 }
 
+/** Услуга из «Прайса услуг» — без цены (цену сотрудник не видит) */
+export interface ServiceOption {
+  /** Код строки прайса (SRV-…); пустой у встроенного списка */
+  id: string;
+  /** Категория в прайсе: Вызов, Курс, Госпитализация, Мед. отвод, Неустойка */
+  category: string;
+  name: string;
+}
+
 export interface ExpenseSheet {
   id: string;
   employeeId: string;
@@ -56,6 +65,8 @@ export interface ExpenseSheet {
   therapyName: string;
   /** Считается в таблице по «Прайсу услуг»; в приложение сотрудника не приходит */
   therapyCost?: number;
+  /** Коды выбранных услуг прайса — по ним таблица считает стоимость; в таблице не хранятся */
+  serviceIds?: string[];
   items: ExpenseItem[];
   totalAmount: number;
   archived: boolean;

@@ -1,6 +1,6 @@
 // API клиент для работы с Google Sheets через Apps Script
 import axios, { AxiosInstance } from 'axios';
-import { ApiResponse, Employee, ExpenseSheet, ChatMessage, Announcement, Nomenclature, InitialStockItem } from '../types';
+import { ApiResponse, Employee, ExpenseSheet, ChatMessage, Announcement, Nomenclature, InitialStockItem, ServiceOption } from '../types';
 import { useSyncStore } from '../store/syncStore';
 
 const CONFIG_KEY = 'appsScriptConfig';
@@ -112,6 +112,26 @@ class ApiService {
     } catch (error) {
       console.error('Ошибка авторизации');
       return { success: false, error: 'Ошибка авторизации' };
+    }
+  }
+
+  /** Актуальные услуги из «Прайса услуг», без цен */
+  async getServiceList(): Promise<ApiResponse<ServiceOption[]>> {
+    try {
+      const response = await this.client.get(`${this.scriptUrl}?action=getServiceList`);
+      if (!Array.isArray(response.data)) {
+        return { success: false, error: response.data?.error || 'Сервер не вернул список услуг' };
+      }
+      const services: ServiceOption[] = response.data
+        .map((row: any) => ({
+          id: String(row.id ?? '').trim(),
+          category: String(row.category ?? '').trim(),
+          name: String(row.name ?? '').trim(),
+        }))
+        .filter((s: ServiceOption) => s.category && s.name);
+      return { success: true, data: services };
+    } catch {
+      return { success: false, error: 'Ошибка загрузки списка услуг' };
     }
   }
 
@@ -261,6 +281,7 @@ class ApiService {
         'Месяц': sheet.month,
         'Категория выезда': sheet.callCategory,
         'Название терапии': sheet.therapyName,
+        serviceIds: sheet.serviceIds,
         'Итого по препаратам': sheet.totalAmount,
         items: sheet.items,
       },
