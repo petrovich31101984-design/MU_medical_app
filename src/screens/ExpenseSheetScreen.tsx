@@ -600,27 +600,45 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
                   // Создаём уникальный ключ на основе имени и индекса
                   const uniqueKey = `${name}_${index}`;
 
+                  // Количество набирается тапом по названию (+1); поле только показывает число,
+                  // «−» убирает лишний тап
+                  const count = quantities[uniqueKey] || 0;
+                  const changeCount = (delta: number) => setQuantities(prev => ({
+                    ...prev,
+                    [uniqueKey]: Math.max(0, (prev[uniqueKey] || 0) + delta)
+                  }));
+
                   return (
                     <div
                       key={uniqueKey}
-                      className="p-4 border-b border-slate-200 flex items-center gap-3"
+                      className={`border-b border-slate-200 flex items-center gap-2 ${count > 0 ? 'bg-blue-50' : ''}`}
                     >
-                      <div className="flex-1 min-w-0">
+                      <button
+                        type="button"
+                        className="flex-1 min-w-0 p-4 text-left select-none active:bg-blue-100 transition-colors"
+                        onClick={() => changeCount(1)}
+                      >
                         <span className="text-base text-slate-800 font-medium block truncate">{name}</span>
-                      </div>
+                      </button>
+                      {count > 0 && (
+                        <button
+                          type="button"
+                          aria-label={`Убрать одну: ${name}`}
+                          className="w-10 h-10 shrink-0 rounded-lg border border-slate-200 bg-white text-xl font-bold text-slate-600 active:bg-slate-100"
+                          onClick={() => changeCount(-1)}
+                        >
+                          −
+                        </button>
+                      )}
                       <input
-                        type="number"
-                        min="0"
-                        value={quantities[uniqueKey] || 0}
-                        onChange={(e) => {
-                          const value = parseInt(e.target.value) || 0;
-                          setQuantities(prev => ({
-                            ...prev,
-                            [uniqueKey]: value
-                          }));
-                        }}
-                        className="w-20 border border-slate-200 rounded-lg p-2 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="0"
+                        type="text"
+                        readOnly
+                        tabIndex={-1}
+                        value={count}
+                        aria-label={`Количество: ${name}`}
+                        className={`w-14 mr-4 shrink-0 border rounded-lg p-2 text-center pointer-events-none select-none ${
+                          count > 0 ? 'border-blue-300 bg-white text-blue-700 font-bold' : 'border-slate-200 bg-slate-50 text-slate-400'
+                        }`}
                       />
                     </div>
                   );
