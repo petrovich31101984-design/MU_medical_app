@@ -181,7 +181,7 @@ export default function InitialStockScreen({ onComplete }: InitialStockScreenPro
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-5">
           <p className="text-sm text-blue-900 font-medium mb-1">Перед началом работы</p>
           <p className="text-sm text-blue-800 leading-relaxed">
-            В каждой категории нажимайте на название позиции — каждое нажатие добавляет 1. Затем сохраните категорию.
+            В каждой категории нажимайте на название позиции — каждое нажатие добавляет 1, или введите число в поле справа. Затем сохраните категорию.
             Позиции, которых у вас нет, оставьте с 0.
             Переход на главный экран станет доступен после сохранения всех категорий.
           </p>
@@ -247,8 +247,8 @@ export default function InitialStockScreen({ onComplete }: InitialStockScreenPro
                   <h3 className="text-xl font-bold text-slate-800">Внесите количество</h3>
                   <p className="text-sm text-slate-500 mt-1">Нажмите на название, чтобы добавить 1</p>
                 </div>
-                {/* Как окно «Внесите количество» в листе расхода: тап по названию +1, «−» убирает лишний тап,
-                    поле только показывает число */}
+                {/* Как окно «Внесите количество» в листе расхода: тап по названию +1, «−» убирает лишний тап.
+                    Большое количество можно ввести числом в поле (цифровая клавиатура, без стрелок) */}
                 {categoryItems.map(item => {
                   const count = parseInt(quantities[item.id] ?? '0', 10) || 0;
                   return (
@@ -276,12 +276,15 @@ export default function InitialStockScreen({ onComplete }: InitialStockScreenPro
                       )}
                       <input
                         type="text"
-                        readOnly
-                        tabIndex={-1}
-                        value={count}
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={quantities[item.id] ?? '0'}
                         aria-label={`Количество: ${item.name}`}
-                        className={`w-14 mr-4 shrink-0 border rounded-lg p-2 text-center pointer-events-none select-none ${
-                          count > 0 ? 'border-blue-300 bg-white text-blue-700 font-bold' : 'border-slate-200 bg-slate-50 text-slate-400'
+                        // Нажали в поле — число выделяется, новое вводится поверх
+                        onFocus={event => event.target.select()}
+                        onChange={event => handleQuantityChange(item.id, event.target.value.replace(/^0+(?=\d)/, ''))}
+                        className={`w-16 mr-4 shrink-0 border rounded-lg p-2 text-center text-lg font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                          count > 0 || quantities[item.id] === '' ? 'border-blue-300 bg-white text-blue-700' : 'border-slate-200 bg-slate-50 text-slate-400'
                         }`}
                       />
                     </div>
