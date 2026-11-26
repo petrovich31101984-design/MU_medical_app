@@ -443,16 +443,35 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
           }).map(item => (
             <div key={item.nomenclatureId} className="bg-slate-50 p-3 rounded-lg mb-2 border border-slate-200">
               <div className="flex justify-between items-center">
-                <p className="text-sm text-slate-700 flex-1">{item.name}</p>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  aria-label={`Количество: ${item.name}`}
-                  value={item.quantity}
-                  onChange={event => updateQuantity(item.nomenclatureId, parseInt(event.target.value) || 0)}
-                  className="w-20 text-sm font-medium text-blue-600 bg-blue-50 px-3 py-2 rounded ml-2 text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <p className="text-sm text-slate-700 flex-1 min-w-0">{item.name}</p>
+                <div className="flex items-center gap-1.5 ml-2 shrink-0">
+                  {/* «−» на единице убирает позицию из листа */}
+                  <button
+                    type="button"
+                    aria-label={`Убрать одну: ${item.name}`}
+                    className="w-9 h-9 rounded-lg bg-red-600 active:bg-red-700 hover:bg-red-700 text-white text-xl font-bold leading-none flex items-center justify-center transition-colors"
+                    onClick={() => updateQuantity(item.nomenclatureId, item.quantity - 1)}
+                  >
+                    −
+                  </button>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    aria-label={`Количество: ${item.name}`}
+                    value={item.quantity}
+                    onChange={event => updateQuantity(item.nomenclatureId, parseInt(event.target.value) || 0)}
+                    className="w-14 text-sm font-medium text-blue-600 bg-blue-50 px-1 py-2 rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    type="button"
+                    aria-label={`Добавить одну: ${item.name}`}
+                    className="w-9 h-9 rounded-lg bg-green-600 active:bg-green-700 hover:bg-green-700 text-white text-xl font-bold leading-none flex items-center justify-center transition-colors"
+                    onClick={() => updateQuantity(item.nomenclatureId, item.quantity + 1)}
+                  >
+                    +
+                  </button>
+                </div>
               </div>
             </div>
           ))}
