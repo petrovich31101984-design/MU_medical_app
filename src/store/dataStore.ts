@@ -85,7 +85,6 @@ const withQueuedSheets = (serverSheets: ExpenseSheet[], employeeId: string): Exp
         month: u['Месяц'] ?? s.month,
         callCategory: u['Категория выезда'] ?? s.callCategory,
         therapyName: u['Название терапии'] ?? s.therapyName,
-        therapyCost: u['Стоимость терапии'] ?? s.therapyCost,
         totalAmount: u['Итого по препаратам'] ?? s.totalAmount,
         items: Array.isArray(u.items) ? u.items : s.items,
       });

@@ -43,6 +43,11 @@ const formatStoredBirthDate = (value: string) => {
   return formatBirthDate(value);
 };
 
+// Категории, для которых сотрудник выбирает терапию (её стоимость берётся из «Прайса услуг»).
+// «Мед. отвод» и «Неустойка» — без выбора: в прайсе у них одна строка.
+const CATEGORIES_WITH_THERAPY = ['Вызов однократно', 'Вызов + повторы', 'Курс', 'Госпитализация'];
+const HOSPITALIZATION_TYPES = ['Ближняя госпитализация', 'Дальняя госпитализация', 'ГПС', 'Другая госпитализация'];
+
 export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreenProps) {
   const { employee } = useAuthStore();
   const { nomenclature, loading: nomenclatureLoading, loadNomenclature, createExpenseSheet, updateExpenseSheet } = useDataStore();
@@ -52,7 +57,6 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
   const [patientBirthDate, setPatientBirthDate] = useState(formatStoredBirthDate(sheet?.patientBirthDate || ''));
   const [callCategory, setCallCategory] = useState(sheet?.callCategory || '');
   const [therapyNames, setTherapyNames] = useState<string[]>(sheet?.therapyName ? sheet.therapyName.split(', ') : ['']);
-  const [therapyCost, setTherapyCost] = useState(sheet ? String(sheet.therapyCost) : '');
   const [items, setItems] = useState<ExpenseItem[]>(sheet?.items || []);
   const [loading, setLoading] = useState(false);
   const [showNomenclaturePicker, setShowNomenclaturePicker] = useState(false);
@@ -125,6 +129,13 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
       return;
     }
 
+    // Стоимость терапии берётся из «Прайса услуг» по выбранной терапии, поэтому без неё лист не сохраняем
+    const chosenTherapies = therapyNames.map(n => n.trim()).filter(Boolean);
+    if (CATEGORIES_WITH_THERAPY.includes(callCategory) && chosenTherapies.length === 0) {
+      setError(callCategory === 'Госпитализация' ? 'Выберите вид госпитализации' : 'Выберите терапию');
+      return;
+    }
+
     if (items.length === 0) {
       setError('Добавьте хотя бы один препарат');
       return;
@@ -143,14 +154,15 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
         date: sheet?.date || now.toISOString(),
         month: sheet?.month || month,
         callCategory,
-        therapyName: therapyNames.join(', '),
-        therapyCost: parseFloat(therapyCost) || 0,
+        therapyName: chosenTherapies.join(', '),
         items,
         totalAmount,
         archived: sheet?.archived || false,
       };
+      // Старая стоимость из кэша телефона в таблицу не отправляется — её пересчитает таблица
+      const { therapyCost: _oldCost, ...sheetWithoutCost } = sheet || ({} as ExpenseSheet);
       const result = sheet
-        ? await updateExpenseSheet({ ...sheet, ...sheetData })
+        ? await updateExpenseSheet({ ...sheetWithoutCost, ...sheetData })
         : await createExpenseSheet(sheetData);
 
       if (result) {
@@ -326,16 +338,21 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
             </div>
           )}
 
-          <div className="mb-4">
-            <label className="text-sm text-slate-500 mb-2 block">Стоимость терапии (₽)</label>
-            <input
-              type="number"
-              className="w-full border border-slate-200 rounded-lg p-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={therapyCost}
-              onChange={(e) => setTherapyCost(e.target.value)}
-              placeholder="0"
-            />
-          </div>
+          {callCategory === 'Госпитализация' && (
+            <div className="mb-4">
+              <label className="text-sm text-slate-500 mb-2 block">Вид госпитализации</label>
+              <select
+                className="w-full border border-slate-200 rounded-lg p-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                value={therapyNames[0] || ''}
+                onChange={(e) => setTherapyNames([e.target.value])}
+              >
+                <option value="">Выберите вид госпитализации</option>
+                {HOSPITALIZATION_TYPES.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="bg-white p-5 rounded-xl border border-slate-200 mb-5">

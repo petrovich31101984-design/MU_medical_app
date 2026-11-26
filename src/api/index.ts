@@ -261,7 +261,6 @@ class ApiService {
         'Месяц': sheet.month,
         'Категория выезда': sheet.callCategory,
         'Название терапии': sheet.therapyName,
-        'Стоимость терапии': sheet.therapyCost,
         'Итого по препаратам': sheet.totalAmount,
         items: sheet.items,
       },

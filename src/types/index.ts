@@ -54,7 +54,8 @@ export interface ExpenseSheet {
   month: string;
   callCategory: string;
   therapyName: string;
-  therapyCost: number;
+  /** Считается в таблице по «Прайсу услуг»; в приложение сотрудника не приходит */
+  therapyCost?: number;
   items: ExpenseItem[];
   totalAmount: number;
   archived: boolean;
