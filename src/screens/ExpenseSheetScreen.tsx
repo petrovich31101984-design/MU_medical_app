@@ -43,10 +43,29 @@ const formatStoredBirthDate = (value: string) => {
   return formatBirthDate(value);
 };
 
-// Категории, для которых сотрудник выбирает терапию (её стоимость берётся из «Прайса услуг»).
-// «Мед. отвод» и «Неустойка» — без выбора: в прайсе у них одна строка.
-const CATEGORIES_WITH_THERAPY = ['Вызов однократно', 'Вызов + повторы', 'Курс', 'Госпитализация'];
-const HOSPITALIZATION_TYPES = ['Ближняя госпитализация', 'Дальняя госпитализация', 'ГПС', 'Другая госпитализация'];
+// Категории, для которых сотрудник выбирает услугу (её стоимость берётся из «Прайса услуг»).
+// Названия должны совпадать со строками листа «Прайс услуг».
+const CATEGORIES_WITH_THERAPY = ['Вызов однократно', 'Вызов + повторы', 'Курс', 'Госпитализация', 'Неустойка', 'Мед. отвод'];
+// Категории с выбором одного вида услуги
+const SINGLE_CHOICE_SERVICES: Record<string, { label: string; placeholder: string; options: string[] }> = {
+  'Госпитализация': {
+    label: 'Вид госпитализации',
+    placeholder: 'Выберите вид госпитализации',
+    options: ['Ближняя госпитализация', 'Дальняя госпитализация', 'ГПС', 'Другая госпитализация'],
+  },
+  'Неустойка': {
+    label: 'Вид неустойки',
+    placeholder: 'Выберите вид неустойки',
+    options: ['Неустойка', 'Неоплаченная неустойка'],
+  },
+  'Мед. отвод': {
+    label: 'Вид мед. отвода',
+    placeholder: 'Выберите вид мед. отвода',
+    options: ['Мед. отвод', 'Неоплаченный медотвод'],
+  },
+};
+// Для этих категорий лист расхода можно сохранить без препаратов
+const CATEGORIES_WITHOUT_ITEMS = ['Госпитализация', 'Неустойка', 'Мед. отвод'];
 
 export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreenProps) {
   const { employee } = useAuthStore();
@@ -116,6 +135,7 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
     }
   };
 
+  const itemsOptional = CATEGORIES_WITHOUT_ITEMS.includes(callCategory);
   const totalAmount = items.reduce((sum, item) => sum + item.total, 0);
 
   const handleSubmit = async () => {
@@ -132,11 +152,11 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
     // Стоимость терапии берётся из «Прайса услуг» по выбранной терапии, поэтому без неё лист не сохраняем
     const chosenTherapies = therapyNames.map(n => n.trim()).filter(Boolean);
     if (CATEGORIES_WITH_THERAPY.includes(callCategory) && chosenTherapies.length === 0) {
-      setError(callCategory === 'Госпитализация' ? 'Выберите вид госпитализации' : 'Выберите терапию');
+      setError(SINGLE_CHOICE_SERVICES[callCategory]?.placeholder || 'Выберите терапию');
       return;
     }
 
-    if (items.length === 0) {
+    if (items.length === 0 && !itemsOptional) {
       setError('Добавьте хотя бы один препарат');
       return;
     }
@@ -338,16 +358,16 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
             </div>
           )}
 
-          {callCategory === 'Госпитализация' && (
+          {SINGLE_CHOICE_SERVICES[callCategory] && (
             <div className="mb-4">
-              <label className="text-sm text-slate-500 mb-2 block">Вид госпитализации</label>
+              <label className="text-sm text-slate-500 mb-2 block">{SINGLE_CHOICE_SERVICES[callCategory].label}</label>
               <select
                 className="w-full border border-slate-200 rounded-lg p-3 text-base focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                 value={therapyNames[0] || ''}
                 onChange={(e) => setTherapyNames([e.target.value])}
               >
-                <option value="">Выберите вид госпитализации</option>
-                {HOSPITALIZATION_TYPES.map(type => (
+                <option value="">{SINGLE_CHOICE_SERVICES[callCategory].placeholder}</option>
+                {SINGLE_CHOICE_SERVICES[callCategory].options.map(type => (
                   <option key={type} value={type}>{type}</option>
                 ))}
               </select>
@@ -356,7 +376,10 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
         </div>
 
         <div className="bg-white p-5 rounded-xl border border-slate-200 mb-5">
-          <h2 className="text-lg font-bold text-slate-800 mb-4">Препараты и расходники</h2>
+          <h2 className="text-lg font-bold text-slate-800 mb-4">
+            Препараты и расходники
+            {itemsOptional && <span className="block text-sm font-normal text-slate-500 mt-1">Необязательно для этой категории</span>}
+          </h2>
           
           <button
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-lg mb-4 transition-colors"
@@ -435,7 +458,7 @@ export default function ExpenseSheetScreen({ onBack, sheet }: ExpenseSheetScreen
         <button
           className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-lg transition-colors disabled:opacity-50"
           onClick={handleSubmit}
-          disabled={loading || isCreationBlocked || !patientName.trim() || items.length === 0}
+          disabled={loading || isCreationBlocked || !patientName.trim() || (items.length === 0 && !itemsOptional)}
         >
           {loading ? (
             <span className="flex items-center justify-center">
