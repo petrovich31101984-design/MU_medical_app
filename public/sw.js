@@ -3,7 +3,7 @@
 // - Файлы приложения (assets/, иконки): из кэша, при первом обращении — из сети с сохранением в кэш.
 // - Иконки Font Awesome с cdnjs: из кэша, в фоне обновляются.
 // - Запросы к Google Apps Script не кэшируются: данные хранит само приложение (localStorage и офлайн-очередь).
-const CACHE = 'smum-v2';
+const CACHE = 'smum-v3';
 const BASE = new URL('./', self.location).href; // папка приложения (на GitHub Pages — /MU_medical_app/)
 const CDN = 'https://cdnjs.cloudflare.com/';
 const NETWORK_TIMEOUT_MS = 5000; // слабая связь: не ждём страницу дольше — берём из кэша
@@ -64,8 +64,10 @@ function withTimeout(promise, ms) {
 }
 
 async function handleNavigation(event) {
-  // Запрос навигации нельзя пересоздать с другими параметрами — отправляем как есть
-  const network = fetch(event.request);
+  // GitHub Pages разрешает хранить страницу в кэше браузера 10 минут, и после обновления
+  // телефон ещё 10 минут открывал старую версию. «no-cache» — всегда спрашиваем сервер,
+  // изменилась ли страница (если нет — ответ короткий, без повторной загрузки).
+  const network = fetch(event.request.url, { cache: 'no-cache', credentials: 'same-origin' });
   try {
     const response = await withTimeout(network, NETWORK_TIMEOUT_MS);
     if (response.ok) {
